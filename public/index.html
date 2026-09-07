@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Webpesan - Broadcast WhatsApp</title>
+  <meta name="description" content="Aplikasi internal untuk mengirim pesan broadcast WhatsApp lewat WhatsApp Cloud API resmi dari Meta." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>" />
+</head>
+<body>
+
+  <!-- Layar masuk / pendaftaran admin pertama -->
+  <div id="layar-masuk" class="layar-masuk" hidden>
+    <div class="kartu-masuk">
+      <div class="logo">Webpesan</div>
+      <p class="kecil" id="masuk-subjudul">Kirim broadcast WhatsApp untuk tim kamu.</p>
+      <div id="masuk-pesan"></div>
+
+      <form id="form-masuk">
+        <div id="kolom-nama" hidden>
+          <label for="masuk-nama">Nama lengkap</label>
+          <input id="masuk-nama" type="text" autocomplete="name" placeholder="Nama kamu" />
+        </div>
+        <label for="masuk-email">Email</label>
+        <input id="masuk-email" type="email" autocomplete="username" required placeholder="nama@perusahaan.id" />
+        <label for="masuk-sandi">Kata sandi</label>
+        <input id="masuk-sandi" type="password" autocomplete="current-password" required placeholder="Minimal 8 karakter" />
+        <button type="submit" style="width:100%;margin-top:1rem" id="masuk-tombol">Masuk</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Aplikasi utama -->
+  <div id="aplikasi" class="aplikasi" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="merek">
+        Webpesan
+        <span id="merek-nomor">WhatsApp Cloud API</span>
+      </div>
+      <button class="tombol-menu" id="tombol-menu" type="button" aria-label="Buka menu">☰</button>
+      <nav id="menu">
+        <a href="#/dashboard" data-halaman="dashboard">📊 Dashboard</a>
+        <a href="#/kontak" data-halaman="kontak">👥 Kontak</a>
+        <a href="#/template" data-halaman="template">📄 Template</a>
+        <a href="#/broadcast" data-halaman="broadcast">📢 Buat Broadcast</a>
+        <a href="#/kampanye" data-halaman="kampanye">🗂️ Riwayat Broadcast</a>
+        <a href="#/inbox" data-halaman="inbox">💬 Kotak Masuk <span class="lencana" id="lencana-inbox" hidden>0</span></a>
+        <a href="#/pengaturan" data-halaman="pengaturan">⚙️ Pengaturan</a>
+        <a href="#/tim" data-halaman="tim">🧑‍💼 Anggota Tim</a>
+        <a href="#/panduan" data-halaman="panduan">📘 Panduan</a>
+      </nav>
+      <div class="kaki">
+        <div id="info-pengguna">-</div>
+        <button type="button" id="tombol-keluar">Keluar</button>
+      </div>
+    </aside>
+
+    <main class="konten" id="konten">
+      <div class="pesan-kosong">Memuat…</div>
+    </main>
+  </div>
+
+  <div id="dialog-wadah"></div>
+  <div id="toast-wadah"></div>
+
+  <script src="/js/core.js"></script>
+  <script src="/js/views-dashboard.js"></script>
+  <script src="/js/views-contacts.js"></script>
+  <script src="/js/views-templates.js"></script>
+  <script src="/js/views-broadcast.js"></script>
+  <script src="/js/views-campaigns.js"></script>
+  <script src="/js/views-inbox.js"></script>
+  <script src="/js/views-settings.js"></script>
+  <script src="/js/views-guide.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
