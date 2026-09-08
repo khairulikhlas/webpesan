@@ -60,6 +60,10 @@ aplikasi dan ikuti langkah 1 sampai 7.
 
 ## Cara memasang di server (supaya webhook jalan)
 
+> **Memakai hosting Hostinger (hPanel)?** Ikuti panduan khusus di
+> [`DEPLOY-HOSTINGER.md`](DEPLOY-HOSTINGER.md) — caranya lewat panel, tanpa SSH.
+> Bagian di bawah ini untuk VPS atau server dengan akses SSH.
+
 Yang dibutuhkan: satu VPS kecil (RAM 1 GB sudah cukup) dan satu subdomain,
 contoh `crm.cintadakwah.or.id`, yang sudah diarahkan ke IP server.
 

@@ -62,8 +62,20 @@ app.get('/api/app-info', (req, res) => {
   res.json({ app_name: settings.get('app_name') || 'CRM Cinta Dakwah' });
 });
 
+/**
+ * Endpoint pemantau. Di hosting shared, aplikasi bisa "ditidurkan" saat tidak ada
+ * pengunjung sehingga antrean broadcast ikut berhenti. Panggil alamat ini lewat
+ * Cron Job tiap menit supaya aplikasi tetap hidup dan antrean terus berjalan.
+ */
 app.get('/healthz', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString(), version: require('./package.json').version });
+  let antrean = { menunggu: 0, kampanye_berjalan: 0 };
+  try {
+    antrean = {
+      menunggu: db.prepare("SELECT COUNT(*) AS n FROM outbound_messages WHERE status = 'pending'").get().n,
+      kampanye_berjalan: db.prepare("SELECT COUNT(*) AS n FROM campaigns WHERE status IN ('running','scheduled')").get().n,
+    };
+  } catch { /* abaikan, yang penting endpoint tetap menjawab */ }
+  res.json({ ok: true, time: new Date().toISOString(), version: require('./package.json').version, antrean });
 });
 
 // ---------------------------------------------------------------------------

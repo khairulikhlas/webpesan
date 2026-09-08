@@ -7,6 +7,38 @@ const config = require('./config');
 
 fs.mkdirSync(config.DATA_DIR, { recursive: true });
 
+/**
+ * Pengaman tambahan untuk hosting shared: kalau folder aplikasi kebetulan
+ * berada di dalam public_html, file database bisa terunduh lewat browser.
+ * Dua file kecil ini memblokir akses tersebut di Apache/LiteSpeed.
+ * (Tetap disarankan menaruh folder aplikasi DI LUAR public_html.)
+ */
+function lindungiFolderData() {
+  const htaccess = path.join(config.DATA_DIR, '.htaccess');
+  if (!fs.existsSync(htaccess)) {
+    fs.writeFileSync(htaccess, [
+      '# Jangan izinkan siapa pun mengunduh isi folder ini lewat browser.',
+      '<IfModule mod_authz_core.c>',
+      '  Require all denied',
+      '</IfModule>',
+      '<IfModule !mod_authz_core.c>',
+      '  Order allow,deny',
+      '  Deny from all',
+      '</IfModule>',
+      'Options -Indexes',
+      '',
+    ].join('\n'));
+  }
+  const indeks = path.join(config.DATA_DIR, 'index.html');
+  if (!fs.existsSync(indeks)) fs.writeFileSync(indeks, '');
+}
+
+try {
+  lindungiFolderData();
+} catch (err) {
+  console.warn('[db] Tidak bisa membuat berkas pelindung folder data:', err.message);
+}
+
 const db = new Database(config.DB_FILE);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');

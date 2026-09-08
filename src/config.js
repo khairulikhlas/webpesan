@@ -1,9 +1,13 @@
 'use strict';
 
 const path = require('path');
-require('dotenv').config({ quiet: true });
 
 const ROOT = path.resolve(__dirname, '..');
+
+// Jalur .env sengaja ditulis absolut. Di hosting shared (Passenger/cPanel),
+// aplikasi kadang dijalankan dari folder kerja yang berbeda, dan jalur relatif
+// membuat file .env tidak terbaca sehingga pengaturan hilang diam-diam.
+require('dotenv').config({ path: path.join(ROOT, '.env'), quiet: true });
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(ROOT, 'data');
