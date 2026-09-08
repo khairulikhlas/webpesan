@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "build": "node -e \"console.log('Aplikasi ini tidak perlu proses build. Tidak ada folder dist. Unggah seluruh folder aplikasi, lalu jalankan server.js lewat panel Node.js.')\"",
     "reset-admin": "node scripts/reset-admin.js"
   },
   "dependencies": {

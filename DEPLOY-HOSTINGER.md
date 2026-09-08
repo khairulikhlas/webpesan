@@ -34,6 +34,33 @@ sudah mendukung Node.js lewat hPanel, dengan domain `crm.cintadakwah.or.id`.
 
 ---
 
+## Penting: aplikasi ini TIDAK punya `npm run build` dan TIDAK ada folder `dist`
+
+Kalau kamu terbiasa memasang web React/Vue/Vite, alurnya biasanya:
+`npm run build` → muncul folder `dist` → unggah isi `dist` ke `public_html` → selesai.
+
+**Aplikasi ini berbeda.** Ini aplikasi server, bukan web statis. Yang diunggah
+adalah **seluruh isi folder aplikasi**, lalu server yang menjalankannya
+lewat `server.js`.
+
+| | Web statis (React/Vue) | CRM Cinta Dakwah |
+|---|---|---|
+| Perlu `npm run build`? | Ya | **Tidak** |
+| Yang diunggah | Isi folder `dist` saja | **Seluruh folder aplikasi** |
+| Yang dijalankan server | Tidak ada, hanya file HTML | **`server.js`** (Node.js) |
+| Butuh menu Node.js di hPanel? | Tidak | **Ya** |
+
+Alasannya: tampilannya sengaja saya tulis dengan HTML, CSS, dan JavaScript biasa
+sehingga tidak perlu dikompilasi. Sementara bagian servernya wajib berjalan,
+karena dialah yang menghubungi WhatsApp API, menyimpan database, dan menerima
+webhook dari Meta.
+
+> Kalau kamu hanya mengunggah folder `public/` ke `public_html`, halaman login
+> memang akan muncul, tapi tidak bisa dipakai sama sekali — semua tombolnya akan
+> gagal karena tidak ada server yang melayani.
+
+---
+
 ## Langkah 2 — Unggah kode aplikasi
 
 **Penting soal lokasi folder.** Sebisa mungkin taruh kode aplikasi
