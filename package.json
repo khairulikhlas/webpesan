@@ -1,8 +1,8 @@
 {
-  "name": "webpesan",
+  "name": "crm-cinta-dakwah",
   "version": "1.0.0",
   "private": true,
-  "description": "Aplikasi web untuk mengirim WhatsApp broadcast lewat WhatsApp Cloud API (Meta) - lengkap dengan kontak, template, antrean pengiriman, webhook status, dan laporan.",
+  "description": "CRM Cinta Dakwah - aplikasi web untuk mengirim WhatsApp broadcast lewat WhatsApp Cloud API (Meta), lengkap dengan kontak, template, antrean pengiriman, webhook status, dan laporan.",
   "type": "commonjs",
   "main": "server.js",
   "engines": {

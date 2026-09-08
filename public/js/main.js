@@ -22,6 +22,16 @@
     el.textContent = String(jumlah || 0);
   };
 
+  /* Nama aplikasi diambil dari server supaya bisa diganti lewat halaman Pengaturan. */
+  App.pasangNamaAplikasi = function pasangNamaAplikasi(nama) {
+    if (!nama) return;
+    document.title = nama;
+    const logo = document.getElementById('masuk-logo');
+    const merek = document.getElementById('merek-nama');
+    if (logo) logo.textContent = nama;
+    if (merek) merek.textContent = nama;
+  };
+
   /* ---------------- Layar masuk ---------------- */
   function siapkanLayarMasuk(needsSetup) {
     modeSetup = needsSetup;
@@ -116,11 +126,15 @@
     try {
       const data = await api('/api/settings');
       const s = data.settings;
+      App.pasangNamaAplikasi(s.app_name);
       document.getElementById('merek-nomor').textContent = s.display_phone_number
         ? `${s.business_name} • ${s.display_phone_number}`
         : (s.business_name || 'WhatsApp Cloud API');
     } catch { /* abaikan */ }
   }
+
+  // Dipanggil ulang setelah pengaturan disimpan supaya nama & nomor di sidebar ikut berubah.
+  App.segarkanIdentitas = perbaruiInfoAtas;
 
   function mulaiAplikasi() {
     layarMasuk.hidden = true;
@@ -140,6 +154,7 @@
 
   (async function awal() {
     try {
+      api('/api/app-info').then((info) => App.pasangNamaAplikasi(info.app_name)).catch(() => {});
       const state = await api('/api/auth/state');
       if (state.user) { App.user = state.user; mulaiAplikasi(); }
       else siapkanLayarMasuk(state.needsSetup);

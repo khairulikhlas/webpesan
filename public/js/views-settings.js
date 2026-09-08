@@ -56,8 +56,10 @@
 
     // ---- Preferensi pengiriman
     const panelKirim = h('div', { class: 'panel' },
-      h('h3', { text: '2. Preferensi pengiriman' }),
-      h('label', { for: 's-nama', text: 'Nama bisnis (untuk tampilan internal)' }),
+      h('h3', { text: '2. Identitas & preferensi pengiriman' }),
+      h('label', { for: 's-appname', text: 'Nama aplikasi (muncul di judul tab dan pojok kiri atas)' }),
+      h('input', { id: 's-appname', type: 'text', value: s.app_name, disabled: !bolehUbah, placeholder: 'CRM Cinta Dakwah' }),
+      h('label', { for: 's-nama', text: 'Nama bisnis / lembaga' }),
       h('input', { id: 's-nama', type: 'text', value: s.business_name, disabled: !bolehUbah }),
       h('label', { for: 's-kode', text: 'Kode negara default' }),
       h('input', { id: 's-kode', type: 'text', value: s.default_country_code, disabled: !bolehUbah, placeholder: '62' }),
@@ -132,6 +134,7 @@
               access_token: v('s-token'),
               app_secret: v('s-secret'),
               graph_version: v('s-versi') || 'v23.0',
+              app_name: v('s-appname') || 'CRM Cinta Dakwah',
               business_name: v('s-nama'),
               default_country_code: v('s-kode') || '62',
               rate_per_minute: v('s-rate') || '60',
@@ -140,6 +143,7 @@
             },
           });
           App.sukses('Pengaturan tersimpan.');
+          await App.segarkanIdentitas();
           App.views.pengaturan(konten);
         } catch (err) {
           App.galat(err.message);

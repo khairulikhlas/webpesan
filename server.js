@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * WEBPESAN - aplikasi web untuk WhatsApp broadcast lewat WhatsApp Cloud API.
+ * CRM CINTA DAKWAH - aplikasi web untuk WhatsApp broadcast lewat WhatsApp Cloud API.
  *
  * Jalankan dengan:  npm start
  * Lalu buka:        http://localhost:3000
@@ -57,6 +57,11 @@ app.use('/api/inbox', require('./src/routes/inbox'));
 app.use('/api/settings', require('./src/routes/settings'));
 app.use('/api/stats', require('./src/routes/stats'));
 
+// Nama aplikasi dibutuhkan halaman login, jadi endpoint ini tidak perlu login.
+app.get('/api/app-info', (req, res) => {
+  res.json({ app_name: settings.get('app_name') || 'CRM Cinta Dakwah' });
+});
+
 app.get('/healthz', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString(), version: require('./package.json').version });
 });
@@ -90,7 +95,7 @@ setInterval(() => auth.cleanupSessions(), 60 * 60 * 1000).unref();
 const server = app.listen(config.PORT, () => {
   const url = config.PUBLIC_URL || `http://localhost:${config.PORT}`;
   console.log('');
-  console.log('  WEBPESAN siap digunakan');
+  console.log(`  ${settings.get('app_name') || 'CRM Cinta Dakwah'} siap digunakan`);
   console.log(`  Buka di browser : ${url}`);
   console.log(`  URL webhook     : ${url}/webhook`);
   console.log(`  Verify token    : ${settings.get('verify_token')}`);

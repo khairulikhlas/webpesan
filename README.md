@@ -1,4 +1,4 @@
-# Webpesan — Broadcast WhatsApp untuk Tim
+# CRM Cinta Dakwah — Broadcast WhatsApp untuk Tim
 
 Aplikasi web siap pakai untuk mengirim pesan **WhatsApp broadcast** lewat
 **WhatsApp Cloud API resmi dari Meta**. Dibuat untuk dipakai tim internal:
@@ -61,7 +61,7 @@ aplikasi dan ikuti langkah 1 sampai 7.
 ## Cara memasang di server (supaya webhook jalan)
 
 Yang dibutuhkan: satu VPS kecil (RAM 1 GB sudah cukup) dan satu subdomain,
-contoh `pesan.namadomainmu.com`, yang sudah diarahkan ke IP server.
+contoh `crm.cintadakwah.or.id`, yang sudah diarahkan ke IP server.
 
 ### 1. Siapkan server
 
@@ -92,7 +92,7 @@ Buka `.env` (`sudo nano .env`) dan isi minimal:
 
 ```ini
 PORT=3000
-PUBLIC_URL=https://pesan.namadomainmu.com
+PUBLIC_URL=https://crm.cintadakwah.or.id
 ENCRYPTION_KEY=<hasil perintah di bawah>
 ```
 
@@ -107,7 +107,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```bash
 sudo tee /etc/systemd/system/webpesan.service > /dev/null <<'EOF'
 [Unit]
-Description=Webpesan - WhatsApp Broadcast
+Description=CRM Cinta Dakwah - WhatsApp Broadcast
 After=network.target
 
 [Service]
@@ -135,7 +135,7 @@ sudo systemctl status webpesan     # pastikan "active (running)"
 sudo tee /etc/nginx/sites-available/webpesan > /dev/null <<'EOF'
 server {
     listen 80;
-    server_name pesan.namadomainmu.com;
+    server_name crm.cintadakwah.or.id;
 
     client_max_body_size 25M;
 
@@ -155,11 +155,11 @@ sudo nginx -t && sudo systemctl reload nginx
 
 # Pasang sertifikat HTTPS gratis
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d pesan.namadomainmu.com
+sudo certbot --nginx -d crm.cintadakwah.or.id
 ```
 
-Setelah ini `https://pesan.namadomainmu.com` sudah bisa dibuka, dan URL webhook
-`https://pesan.namadomainmu.com/webhook` siap didaftarkan ke Meta (caranya ada
+Setelah ini `https://crm.cintadakwah.or.id` sudah bisa dibuka, dan URL webhook
+`https://crm.cintadakwah.or.id/webhook` siap didaftarkan ke Meta (caranya ada
 di menu **Panduan** langkah 4 di dalam aplikasi).
 
 ---
@@ -186,7 +186,7 @@ halaman **Pengaturan** dan disimpan terenkripsi di database.
 
 ```bash
 sudo systemctl stop webpesan
-sudo tar czf ~/webpesan-backup-$(date +%F).tar.gz -C /var/www/webpesan data
+sudo tar czf ~/crm-cinta-dakwah-backup-$(date +%F).tar.gz -C /var/www/webpesan data
 sudo systemctl start webpesan
 ```
 

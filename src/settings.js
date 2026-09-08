@@ -19,7 +19,8 @@ const DEFAULTS = {
   rate_per_minute: '60',            // kecepatan kirim default (pesan per menit)
   daily_limit: '1000',              // pengaman: maksimal pesan per 24 jam
   require_opt_in: '1',              // hanya kirim ke kontak yang opt-in
-  business_name: 'Tim Saya',
+  app_name: 'CRM Cinta Dakwah',
+  business_name: 'Cinta Dakwah',
 };
 
 function getAll() {
