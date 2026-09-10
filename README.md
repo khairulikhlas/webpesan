@@ -198,14 +198,21 @@ sudo systemctl start webpesan
 > Access Token di database tidak bisa dibaca lagi (tinggal isi ulang lewat
 > halaman Pengaturan).
 
-**Memperbarui aplikasi:**
+**Memperbarui aplikasi:** kirim berkas ZIP versi baru ke server, lalu jalankan
+skrip pembaru. Skrip ini mencadangkan data lebih dulu, memasang versi baru,
+menghidupkan ulang aplikasi, dan memastikan aplikasi menjawab dengan benar.
 
 ```bash
-cd /var/www/webpesan
-sudo git pull
-sudo npm install --omit=dev
-sudo systemctl restart webpesan
+# dari komputer sendiri
+scp versi-baru.zip root@IP_SERVER:/root/
+
+# lalu di dalam server
+bash /var/www/crm-app/scripts/perbarui.sh /root/versi-baru.zip
 ```
+
+Folder `data/` dan berkas `.env` tidak pernah disentuh oleh skrip ini.
+Kalau aplikasi gagal hidup, skrip menampilkan lokasi cadangan dan perintah
+untuk melihat penyebabnya.
 
 **Lupa kata sandi admin:**
 
