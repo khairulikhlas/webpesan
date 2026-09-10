@@ -10,6 +10,7 @@ const SECRET_KEYS = new Set(['access_token', 'app_secret']);
 const DEFAULTS = {
   phone_number_id: '',
   business_account_id: '',
+  app_id: '',
   display_phone_number: '',
   access_token: '',
   app_secret: '',

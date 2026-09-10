@@ -177,6 +177,81 @@ async function listTemplates({ limit = 100 } = {}) {
   return all;
 }
 
+/**
+ * Mengunggah berkas contoh ke Meta memakai Resumable Upload API.
+ * Dipakai saat membuat template berheader gambar/video/dokumen: Meta meminta
+ * "handle" berkas contoh, bukan alamat URL biasa.
+ *
+ * Prosesnya dua tahap:
+ *   1. Membuka sesi unggah  -> mendapat id sesi
+ *   2. Mengirim isi berkas  -> mendapat handle untuk dipakai di template
+ */
+async function unggahBerkasContoh({ buffer, mimeType, fileName = 'contoh' }) {
+  const { token, version } = cfg();
+  const appId = settings.get('app_id');
+  if (!appId) {
+    throw new WhatsAppError(
+      'App ID belum diisi di Pengaturan. Nilai ini dibutuhkan untuk mengunggah gambar contoh template ke Meta.',
+      { fatal: true },
+    );
+  }
+
+  // Tahap 1: buka sesi unggah
+  const sesi = await graphRequest(`${appId}/uploads`, {
+    method: 'POST',
+    query: { file_name: fileName, file_length: buffer.length, file_type: mimeType },
+  });
+  const idSesi = sesi?.id;
+  if (!idSesi) throw new WhatsAppError('Meta tidak memberikan id sesi unggah.', { raw: sesi });
+
+  // Tahap 2: kirim isi berkas. Tahap ini memakai skema Authorization "OAuth",
+  // berbeda dari "Bearer" yang dipakai endpoint Graph lainnya.
+  const url = `${GRAPH_HOST}/${version}/${idSesi}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 120000);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `OAuth ${token}`,
+        file_offset: '0',
+        'Content-Type': 'application/octet-stream',
+      },
+      body: buffer,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new WhatsAppError(`Gagal mengunggah berkas contoh: ${err.message}`, { retryable: true });
+  }
+  clearTimeout(timer);
+
+  const teks = await response.text();
+  let json = null;
+  try { json = teks ? JSON.parse(teks) : null; } catch { json = { rawText: teks }; }
+  if (!response.ok) throw classifyError(response.status, json);
+  if (!json?.h) throw new WhatsAppError('Meta tidak memberikan handle berkas.', { raw: json });
+  return json.h;
+}
+
+/** Membuat template baru. Setelah dibuat, Meta akan meninjaunya (status PENDING). */
+async function buatTemplate({ name, language, category, components }) {
+  const { wabaId } = cfg();
+  if (!wabaId) throw new WhatsAppError('WhatsApp Business Account ID belum diisi di Pengaturan.', { fatal: true });
+  return graphRequest(`${wabaId}/message_templates`, {
+    method: 'POST',
+    body: { name, language, category, components },
+  });
+}
+
+/** Menghapus template dari WhatsApp Manager. */
+async function hapusTemplate(name) {
+  const { wabaId } = cfg();
+  if (!wabaId) throw new WhatsAppError('WhatsApp Business Account ID belum diisi di Pengaturan.', { fatal: true });
+  return graphRequest(`${wabaId}/message_templates`, { method: 'DELETE', query: { name } });
+}
+
 /** Cek kredensial: ambil info nomor pengirim. */
 async function getPhoneNumberInfo() {
   const { phoneNumberId } = cfg();
@@ -195,4 +270,7 @@ module.exports = {
   markAsRead,
   listTemplates,
   getPhoneNumberInfo,
+  unggahBerkasContoh,
+  buatTemplate,
+  hapusTemplate,
 };

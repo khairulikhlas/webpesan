@@ -55,6 +55,7 @@ app.use('/api/templates', require('./src/routes/templates'));
 app.use('/api/campaigns', require('./src/routes/campaigns'));
 app.use('/api/inbox', require('./src/routes/inbox'));
 app.use('/api/settings', require('./src/routes/settings'));
+app.use('/api/media', require('./src/routes/media'));
 app.use('/api/stats', require('./src/routes/stats'));
 
 // Nama aplikasi dibutuhkan halaman login, jadi endpoint ini tidak perlu login.
@@ -77,6 +78,17 @@ app.get('/healthz', (req, res) => {
   } catch { /* abaikan, yang penting endpoint tetap menjawab */ }
   res.json({ ok: true, time: new Date().toISOString(), version: require('./package.json').version, antrean });
 });
+
+// ---------------------------------------------------------------------------
+// Berkas media
+// WhatsApp mengunduh gambar/video/dokumen header langsung dari alamat ini,
+// jadi folder ini memang harus bisa diakses publik tanpa login.
+// ---------------------------------------------------------------------------
+app.use('/media', express.static(require('./src/routes/media').MEDIA_DIR, {
+  maxAge: '30d',
+  index: false,
+  dotfiles: 'deny',
+}));
 
 // ---------------------------------------------------------------------------
 // Halaman web

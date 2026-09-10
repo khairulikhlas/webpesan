@@ -155,6 +155,25 @@ CREATE TABLE IF NOT EXISTS inbound_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_in_phone ON inbound_messages(phone, received_at);
 
+CREATE TABLE IF NOT EXISTS media (
+  id           TEXT PRIMARY KEY,          -- nama berkas di folder data/media
+  original_name TEXT NOT NULL DEFAULT '',
+  mime         TEXT NOT NULL DEFAULT '',
+  size         INTEGER NOT NULL DEFAULT 0,
+  uploaded_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Mengingat isian variabel terakhir untuk tiap template, supaya pengguna tidak
+-- perlu mengetik ulang (termasuk alamat gambar header) setiap kali broadcast.
+CREATE TABLE IF NOT EXISTS template_defaults (
+  name       TEXT NOT NULL,
+  language   TEXT NOT NULL,
+  mapping    TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (name, language)
+);
+
 CREATE TABLE IF NOT EXISTS webhook_logs (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   kind        TEXT NOT NULL DEFAULT 'event',

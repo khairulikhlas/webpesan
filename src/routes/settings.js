@@ -18,6 +18,7 @@ function maskedSettings(req) {
   return {
     phone_number_id: s.phone_number_id,
     business_account_id: s.business_account_id,
+    app_id: s.app_id,
     display_phone_number: s.display_phone_number,
     graph_version: s.graph_version,
     verify_token: s.verify_token,
@@ -40,7 +41,7 @@ router.get('/', (req, res) => res.json({ settings: maskedSettings(req) }));
 
 router.put('/', requireAdmin, (req, res) => {
   const allowed = [
-    'phone_number_id', 'business_account_id', 'display_phone_number', 'access_token', 'app_secret',
+    'phone_number_id', 'business_account_id', 'app_id', 'display_phone_number', 'access_token', 'app_secret',
     'verify_token', 'graph_version', 'default_country_code', 'rate_per_minute', 'daily_limit',
     'require_opt_in', 'business_name', 'app_name',
   ];

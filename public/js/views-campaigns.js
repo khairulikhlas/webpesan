@@ -3,10 +3,8 @@
   'use strict';
   const { h, api, fmtTanggal, fmtAngka, fmtNomor, labelStatus } = window.App;
 
-  let pengulang = null;
-
   function hentikanPengulang() {
-    if (pengulang) { clearInterval(pengulang); pengulang = null; }
+    App.bersihkanTimer();
   }
 
   function barisStatistik(s) {
@@ -70,7 +68,7 @@
 
     App.muat(konten);
     await muatUlang();
-    pengulang = setInterval(() => { muatUlang().catch(() => {}); }, 10000);
+    App.pasangTimer(() => { muatUlang().catch(() => {}); }, 10000);
   };
 
   // ------------------------------------------------------------- Detail
@@ -166,7 +164,7 @@
 
     App.muat(konten);
     await muatUlang();
-    pengulang = setInterval(() => { muatUlang().catch(() => {}); }, 5000);
+    App.pasangTimer(() => { muatUlang().catch(() => {}); }, 5000);
   };
 
   window.App.hentikanPengulangKampanye = hentikanPengulang;

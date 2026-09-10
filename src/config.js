@@ -28,6 +28,7 @@ module.exports = {
   ENV_SETTINGS: {
     phone_number_id: process.env.WA_PHONE_NUMBER_ID || '',
     business_account_id: process.env.WA_BUSINESS_ACCOUNT_ID || '',
+    app_id: process.env.WA_APP_ID || '',
     access_token: process.env.WA_ACCESS_TOKEN || '',
     app_secret: process.env.WA_APP_SECRET || '',
     verify_token: process.env.WA_VERIFY_TOKEN || '',

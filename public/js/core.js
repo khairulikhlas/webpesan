@@ -8,6 +8,27 @@
     state: {},
   };
 
+  /* ----------------------------------------------------------------------
+     Pencatat timer halaman.
+
+     Beberapa halaman memasang penyegar otomatis (setInterval). Kalau tidak
+     dimatikan saat pindah menu, penyegar itu tetap jalan di latar belakang
+     lalu menimpa layar halaman lain. Semua timer halaman dicatat di sini
+     dan dibersihkan oleh pengatur halaman setiap kali berpindah menu.
+     ---------------------------------------------------------------------- */
+  const timerHalaman = new Set();
+
+  App.pasangTimer = function pasangTimer(fungsi, jeda) {
+    const id = setInterval(fungsi, jeda);
+    timerHalaman.add(id);
+    return id;
+  };
+
+  App.bersihkanTimer = function bersihkanTimer() {
+    for (const id of timerHalaman) clearInterval(id);
+    timerHalaman.clear();
+  };
+
   /* ---------- Pemanggilan API ---------- */
   App.api = async function api(path, options = {}) {
     const opts = {
@@ -163,6 +184,98 @@
     } catch {
       App.toast('Tidak bisa menyalin otomatis. Silakan salin manual.');
     }
+  };
+
+  /* ----------------------------------------------------------------------
+     Galeri media: unggah sekali, alamatnya bisa dipakai berkali-kali.
+     Memanggil onPilih(url) ketika pengguna memilih sebuah berkas.
+     ---------------------------------------------------------------------- */
+  App.galeriMedia = function galeriMedia(onPilih) {
+    const daftar = App.h('div', {}, App.h('div', { class: 'pesan-kosong', text: 'Memuat…' }));
+    const pesan = App.h('div');
+
+    const isi = App.h('div', {},
+      App.h('div', { class: 'info' },
+        'WhatsApp mengambil gambar langsung dari alamat internet setiap kali pesan dikirim. ',
+        'Gambar contoh yang dipasang saat membuat template di WhatsApp Manager ',
+        App.h('strong', { text: 'hanya dipakai Meta untuk meninjau' }),
+        ', jadi tidak bisa dipakai ulang saat mengirim. Unggah sekali di sini, lalu alamatnya bisa dipakai untuk broadcast berikutnya.'),
+      App.h('label', { for: 'g-berkas', text: 'Unggah berkas baru' }),
+      App.h('input', { id: 'g-berkas', type: 'file', accept: '.jpg,.jpeg,.png,.mp4,.pdf' }),
+      App.h('div', { class: 'kecil', text: 'Gambar JPG/PNG maks 5 MB, video MP4 maks 16 MB, dokumen PDF maks 100 MB.' }),
+      pesan,
+      App.h('h4', { style: 'margin-top:1rem', text: 'Berkas tersimpan' }),
+      daftar);
+
+    const { kotak, tutup } = App.dialog({ judul: 'Galeri Media', isi, lebar: true, tanpaTombol: true });
+
+    async function muatDaftar() {
+      const data = await App.api('/api/media');
+      daftar.innerHTML = '';
+      if (data.media.length === 0) {
+        daftar.appendChild(App.h('div', { class: 'pesan-kosong', text: 'Belum ada berkas. Unggah yang pertama di atas.' }));
+        return;
+      }
+      const grid = App.h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem' });
+      for (const m of data.media) {
+        const gambar = String(m.mime).startsWith('image/')
+          ? App.h('img', { src: m.url, alt: m.original_name, style: 'width:100%;height:96px;object-fit:cover;border-radius:8px' })
+          : App.h('div', { style: 'height:96px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:8px;font-size:1.6rem',
+              text: String(m.mime).startsWith('video/') ? '🎬' : '📄' });
+
+        const kartu = App.h('div', { style: 'border:1px solid var(--garis);border-radius:10px;padding:.5rem' },
+          gambar,
+          App.h('div', { class: 'kecil', style: 'margin:.3rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', text: m.original_name || m.id }),
+          App.h('div', { class: 'kecil', text: (m.size / 1024).toFixed(0) + ' KB' }),
+          App.h('div', { class: 'baris', style: 'gap:.3rem;margin-top:.4rem' },
+            App.h('button', { type: 'button', class: 'kecil-btn', text: 'Pakai', onclick: () => { onPilih(m.url, m); tutup(); } }),
+            App.h('button', {
+              type: 'button', class: 'sekunder kecil-btn', text: 'Hapus',
+              onclick: async () => {
+                const ya = await App.konfirmasi(`Hapus berkas ${m.original_name || m.id}? Broadcast lama yang memakainya bisa gagal menampilkan gambar.`, 'Hapus berkas', 'Ya, hapus');
+                if (!ya) return;
+                await App.api('/api/media/' + m.id, { method: 'DELETE' });
+                App.sukses('Berkas dihapus.');
+                muatDaftar();
+              },
+            })));
+        grid.appendChild(kartu);
+      }
+      daftar.appendChild(grid);
+    }
+
+    kotak.querySelector('#g-berkas').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      pesan.innerHTML = '';
+      pesan.appendChild(App.h('div', { class: 'info', text: `Mengunggah ${file.name}…` }));
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const hasil = await App.api('/api/media', {
+            method: 'POST',
+            body: {
+              filename: file.name,
+              contentType: file.type,
+              data: String(reader.result).split(',')[1] || '',
+            },
+          });
+          pesan.innerHTML = '';
+          pesan.appendChild(App.h('div', { class: 'sukses', text: 'Berhasil diunggah. Tekan "Pakai" pada berkas di bawah.' }));
+          void hasil;
+          muatDaftar();
+        } catch (err) {
+          pesan.innerHTML = '';
+          pesan.appendChild(App.h('div', { class: 'galat', text: err.message }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    muatDaftar().catch((err) => {
+      daftar.innerHTML = '';
+      daftar.appendChild(App.h('div', { class: 'galat', text: err.message }));
+    });
   };
 
   App.muat = function muat(el, teks = 'Memuat…') {

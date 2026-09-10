@@ -26,6 +26,20 @@ function getTemplateOrThrow(name, language) {
   return { row, components };
 }
 
+/** Menyimpan isian variabel terakhir supaya tidak perlu diketik ulang lain kali. */
+function simpanIsianTemplate(name, language, mapping) {
+  try {
+    db.prepare(`
+      INSERT INTO template_defaults (name, language, mapping, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(name, language) DO UPDATE SET
+        mapping = excluded.mapping, updated_at = datetime('now')
+    `).run(name, language, JSON.stringify(mapping || {}));
+  } catch (err) {
+    console.error('[campaigns] gagal menyimpan isian template:', err.message);
+  }
+}
+
 function campaignStats(campaignId) {
   const rows = db.prepare(`
     SELECT status, COUNT(*) AS n FROM outbound_messages WHERE campaign_id = ? GROUP BY status
@@ -153,6 +167,7 @@ router.post('/test-send', async (req, res) => {
     `).run(contact.id || null, to, String(preview.body || '').slice(0, 500),
       JSON.stringify({ templateName, language, components: built.components }), result.wamid);
 
+    simpanIsianTemplate(templateName, language, mapping);
     logActivity(req.user.id, 'campaign.test_send', `${to} (${templateName})`);
     res.json({ ok: true, wamid: result.wamid, missing: built.missing });
   } catch (err) {
@@ -210,6 +225,7 @@ router.post('/', (req, res) => {
       return campaignId;
     })();
 
+    simpanIsianTemplate(templateName, language, mapping);
     logActivity(req.user.id, 'campaign.created', `#${result} "${name}" -> ${contacts.length} penerima (${status})`);
     res.json({ ok: true, id: result, status, recipients: contacts.length });
   } catch (err) {

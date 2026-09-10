@@ -4,10 +4,8 @@
   const { h, api, fmtTanggal, fmtNomor } = window.App;
 
   let aktif = null;
-  let pengulang = null;
 
   window.App.views.inbox = async function inboxView(konten) {
-    if (pengulang) clearInterval(pengulang);
 
     const kolomKiri = h('div', { class: 'panel daftar-percakapan' });
     const kolomKanan = h('div', { class: 'panel' }, h('div', { class: 'pesan-kosong', text: 'Pilih percakapan di sebelah kiri.' }));
@@ -92,6 +90,6 @@
 
     await muatDaftar();
     if (aktif) await bukaPercakapan(aktif);
-    pengulang = setInterval(() => { muatDaftar().catch(() => {}); }, 15000);
+    App.pasangTimer(() => { muatDaftar().catch(() => {}); }, 15000);
   };
 })();

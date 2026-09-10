@@ -59,7 +59,9 @@
         gelembungPratinjau(t.preview));
       kartu.addEventListener('click', () => {
         draf.template = t;
-        draf.mapping = {};
+        // Pakai isian terakhir yang pernah dipakai untuk template ini, supaya
+        // alamat gambar dan teks tetap tidak perlu diketik ulang.
+        draf.mapping = JSON.parse(JSON.stringify(t.defaults || {}));
         draf.nama = draf.nama || `${t.name} - ${new Date().toLocaleDateString('id-ID')}`;
         draf.langkah = 2;
         gambar();
@@ -94,11 +96,40 @@
       kotak.appendChild(h('strong', { text: slot.label }));
 
       if (slot.kind === 'media') {
-        kotak.appendChild(h('label', { text: 'URL file (harus https dan bisa diakses publik)' }));
-        const input = h('input', { type: 'text', value: nilaiAwal.value, placeholder: 'https://situsku.com/gambar-promo.jpg' });
-        input.addEventListener('input', () => { draf.mapping[slot.key] = { source: 'static', value: input.value.trim() }; });
-        kotak.appendChild(input);
-        kotak.appendChild(h('div', { class: 'kecil', text: 'Gambar: JPG/PNG maks 5MB. Video: MP4 maks 16MB. Dokumen: PDF maks 100MB.' }));
+        kotak.appendChild(h('label', { text: 'Berkas untuk header' }));
+        const input = h('input', { type: 'text', value: nilaiAwal.value, placeholder: 'https://crm.cintadakwah.or.id/media/…' });
+        const simpan = () => { draf.mapping[slot.key] = { source: 'static', value: input.value.trim() }; };
+        input.addEventListener('input', simpan);
+
+        const pratinjauMedia = h('div', { style: 'margin-top:.5rem' });
+        const segarkanPratinjau = () => {
+          pratinjauMedia.innerHTML = '';
+          const url = input.value.trim();
+          if (url && /\.(jpg|jpeg|png)$/i.test(url)) {
+            pratinjauMedia.appendChild(h('img', {
+              src: url, alt: 'Pratinjau gambar header',
+              style: 'max-width:220px;border-radius:10px;border:1px solid var(--garis)',
+            }));
+          }
+        };
+        input.addEventListener('input', segarkanPratinjau);
+
+        kotak.appendChild(h('div', { class: 'baris', style: 'gap:.5rem' },
+          h('div', { class: 'kolom' }, input),
+          h('button', {
+            type: 'button', class: 'sekunder', text: '🖼️ Galeri',
+            onclick: () => App.galeriMedia((url) => {
+              input.value = url;
+              simpan();
+              segarkanPratinjau();
+              App.sukses('Berkas dipilih.');
+            }),
+          })));
+        kotak.appendChild(h('div', { class: 'kecil' },
+          'Tekan ', h('strong', { text: 'Galeri' }), ' untuk mengunggah gambar sekali saja. ',
+          'Alamatnya otomatis diingat untuk broadcast berikutnya dengan template yang sama.'));
+        kotak.appendChild(pratinjauMedia);
+        segarkanPratinjau();
       } else {
         const pilihSumber = h('select', {},
           h('option', { value: 'static', selected: nilaiAwal.source === 'static', text: 'Teks tetap (sama untuk semua)' }),
@@ -357,7 +388,7 @@
       try {
         const data = await api(`/api/templates/${encodeURIComponent(params.get('template'))}/${encodeURIComponent(params.get('bahasa') || '')}`);
         draf.template = data.template;
-        draf.mapping = {};
+        draf.mapping = JSON.parse(JSON.stringify(data.template.defaults || {}));
         draf.nama = `${data.template.name} - ${new Date().toLocaleDateString('id-ID')}`;
         draf.langkah = 2;
         history.replaceState(null, '', '#/broadcast');

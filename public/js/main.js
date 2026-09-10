@@ -99,6 +99,10 @@
     const id = bagian[1] || null;
     const params = new URLSearchParams(kueri || '');
 
+    // Matikan penyegar otomatis milik halaman sebelumnya, supaya tidak
+    // menimpa tampilan halaman yang baru dibuka.
+    App.bersihkanTimer();
+
     document.querySelectorAll('#menu a').forEach((a) => {
       a.classList.toggle('aktif', a.dataset.halaman === halaman);
     });

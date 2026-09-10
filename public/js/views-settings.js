@@ -36,6 +36,10 @@
       h('input', { id: 's-waba', type: 'text', value: s.business_account_id, disabled: !bolehUbah }),
       h('div', { class: 'kecil', text: 'Dibutuhkan untuk mengambil daftar template dari WhatsApp Manager.' }),
 
+      h('label', { for: 's-appid', text: 'App ID' }),
+      h('input', { id: 's-appid', type: 'text', value: s.app_id, disabled: !bolehUbah, placeholder: 'contoh: 1234567890123456' }),
+      h('div', { class: 'kecil', text: 'Ada di App Dashboard bagian atas. Dibutuhkan hanya kalau kamu membuat template berheader gambar langsung dari web ini.' }),
+
       h('label', { for: 's-token', text: 'Access Token (System User, permanen) *' }),
       h('input', {
         id: 's-token', type: 'password', disabled: !bolehUbah,
@@ -131,6 +135,7 @@
             body: {
               phone_number_id: v('s-pni'),
               business_account_id: v('s-waba'),
+              app_id: v('s-appid'),
               access_token: v('s-token'),
               app_secret: v('s-secret'),
               graph_version: v('s-versi') || 'v23.0',
