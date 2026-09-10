@@ -118,17 +118,33 @@ router.post('/webhook-check', async (req, res) => {
     verifikasi ? `Terakhir berhasil ${verifikasi.received_at}` : 'Belum pernah berhasil',
     verifikasi ? '' : 'Daftarkan Callback URL dan Verify token di App Dashboard Meta, lalu tekan Verify and save.');
 
-  // 3. Akun WhatsApp harus berlangganan ke aplikasi
+  // 3. Akun WhatsApp harus berlangganan ke APLIKASI INI, bukan sekadar ke
+  //    aplikasi mana pun. Satu akun WhatsApp bisa terhubung ke beberapa
+  //    aplikasi sekaligus, dan webhook hanya sampai ke aplikasi yang terdaftar.
   try {
     const langganan = await wa.cekLanggananWebhook();
-    tambah('Akun WhatsApp terhubung ke aplikasi', langganan.berlangganan,
-      langganan.berlangganan
-        ? `Terhubung ke: ${langganan.aplikasi.map((a) => a.nama || a.id).join(', ')}`
-        : 'Belum ada aplikasi yang terhubung',
-      langganan.berlangganan ? '' : 'Tekan tombol "Hubungkan sekarang" di bawah. Tanpa ini Meta tidak akan mengirim status pesan maupun balasan.');
-    hasil.bisaDihubungkan = !langganan.berlangganan;
+    const daftar = langganan.aplikasi;
+    const namaDaftar = daftar.map((a) => a.nama || a.id).join(', ');
+    hasil.aplikasiTerhubung = daftar;
+
+    if (!s.app_id) {
+      tambah('Aplikasi ini terhubung ke akun WhatsApp', false,
+        daftar.length ? `Akun terhubung ke: ${namaDaftar}` : 'Belum ada aplikasi yang terhubung',
+        'Isi kolom App ID di bagian atas halaman ini dulu, supaya bisa dipastikan aplikasi mana yang menerima webhook.');
+      hasil.bisaDihubungkan = true;
+    } else if (daftar.some((a) => String(a.id) === String(s.app_id))) {
+      tambah('Aplikasi ini terhubung ke akun WhatsApp', true, `Terhubung ke: ${namaDaftar}`);
+      hasil.bisaDihubungkan = false;
+    } else {
+      tambah('Aplikasi ini terhubung ke akun WhatsApp', false,
+        daftar.length
+          ? `Akun WhatsApp terhubung ke ${namaDaftar} — tetapi aplikasi ini (App ID ${s.app_id}) tidak termasuk.`
+          : 'Belum ada aplikasi yang terhubung',
+        'Tekan tombol "Hubungkan sekarang" di bawah. Selama aplikasi ini belum terdaftar, seluruh status pesan dan balasan pelanggan dikirim Meta ke aplikasi lain, bukan ke sini.');
+      hasil.bisaDihubungkan = true;
+    }
   } catch (err) {
-    tambah('Akun WhatsApp terhubung ke aplikasi', false, err.detail || err.message,
+    tambah('Aplikasi ini terhubung ke akun WhatsApp', false, err.detail || err.message,
       'Periksa kembali WhatsApp Business Account ID dan Access Token di halaman ini.');
   }
 
