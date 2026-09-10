@@ -62,6 +62,31 @@
 
       if (data.window_open) {
         const teks = h('textarea', { placeholder: 'Tulis balasan…', style: 'min-height:70px' });
+
+        // Pemilih emoji sederhana: menyisipkan di posisi kursor, bukan di akhir teks.
+        const EMOJI = ['🙏', '😊', '❤️', '💚', '👍', '🤲', '✨', '🌙', '📿', '🕌', '📖', '💌',
+          '🎉', '🔔', '📢', '📅', '📍', '✅', '❓', '🙌', '💐', '☺️'];
+        const papanEmoji = h('div', {
+          hidden: true,
+          style: 'display:flex;flex-wrap:wrap;gap:.25rem;padding:.5rem;border:1px solid var(--garis);border-radius:9px;margin-top:.4rem;background:#fff',
+        }, EMOJI.map((e) => h('button', {
+          type: 'button', class: 'sekunder kecil-btn', style: 'font-size:1.15rem;padding:.2rem .4rem;line-height:1',
+          text: e,
+          onclick: () => {
+            const awal = teks.selectionStart ?? teks.value.length;
+            const akhir = teks.selectionEnd ?? teks.value.length;
+            teks.value = teks.value.slice(0, awal) + e + teks.value.slice(akhir);
+            const posisi = awal + e.length;
+            teks.focus();
+            teks.setSelectionRange(posisi, posisi);
+          },
+        })));
+
+        const tombolEmoji = h('button', {
+          type: 'button', class: 'sekunder', title: 'Sisipkan emoji', text: '😊',
+          onclick: () => { papanEmoji.hidden = !papanEmoji.hidden; },
+        });
+
         const kirim = h('button', { type: 'button', text: 'Kirim balasan' });
         kirim.addEventListener('click', async () => {
           const isi = teks.value.trim();
@@ -78,8 +103,9 @@
             kirim.disabled = false;
           }
         });
-        kolomKanan.appendChild(h('div', { style: 'margin-top:.7rem' }, teks,
-          h('div', { class: 'baris', style: 'justify-content:flex-end;margin-top:.5rem' }, kirim)));
+        kolomKanan.appendChild(h('div', { style: 'margin-top:.7rem' }, teks, papanEmoji,
+          h('div', { class: 'baris', style: 'justify-content:space-between;margin-top:.5rem' },
+            tombolEmoji, kirim)));
       } else {
         kolomKanan.appendChild(h('div', { class: 'peringatan', style: 'margin-top:.7rem' },
           'Pelanggan ini terakhir membalas lebih dari 24 jam lalu, jadi WhatsApp tidak mengizinkan pesan teks bebas. ',

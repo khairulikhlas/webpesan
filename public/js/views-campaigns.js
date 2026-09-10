@@ -122,6 +122,12 @@
         }));
       }
       tombol.appendChild(h('a', { class: 'tombol sekunder', href: `/api/campaigns/${id}/export`, text: '⬇ Unduh laporan CSV' }));
+      if (c.stats.failed > 0) {
+        tombol.appendChild(h('button', {
+          type: 'button', class: 'sekunder', text: '🧹 Bersihkan nomor tidak aktif',
+          onclick: () => dialogBersihkan(id, muatUlang),
+        }));
+      }
       tombol.appendChild(h('button', {
         type: 'button', class: 'bahaya', text: '🗑 Hapus riwayat',
         onclick: () => aksi('delete', 'Hapus kampanye ini beserta seluruh riwayat pengirimannya?'),
@@ -166,6 +172,69 @@
     await muatUlang();
     App.pasangTimer(() => { muatUlang().catch(() => {}); }, 5000);
   };
+
+  /**
+   * Menandai nomor yang terbukti tidak aktif supaya tidak ikut dikirimi lagi.
+   * Ditampilkan hitungannya dulu sebelum benar-benar diterapkan.
+   */
+  function dialogBersihkan(idKampanye, muatUlang) {
+    const hanyaMati = h('input', { type: 'checkbox', checked: true });
+    const hasil = h('div', { style: 'margin-top:.8rem' });
+
+    const isi = h('div', {},
+      h('div', { class: 'info' },
+        'Nomor yang gagal dengan alasan ', h('strong', { text: 'tidak terdaftar di WhatsApp' }),
+        ' hanya membuang kuota harian dan menurunkan kualitas nomor pengirim. ',
+        'Nomor seperti ini akan ditandai berhenti berlangganan dan diberi label ',
+        h('code', { text: 'nomor-tidak-aktif' }), '. Datanya tidak dihapus, jadi tetap bisa ditinjau kapan saja.'),
+      h('label', { class: 'inline' }, hanyaMati, 'Hanya nomor yang tidak terdaftar di WhatsApp (disarankan)'),
+      h('div', { class: 'kecil', text: 'Kalau dimatikan, semua kegagalan ikut ditandai termasuk yang sifatnya sementara seperti gangguan jaringan. Biasanya tidak disarankan.' }),
+      hasil);
+
+    async function hitung() {
+      hasil.innerHTML = '';
+      hasil.appendChild(h('div', { class: 'kecil', text: 'Menghitung…' }));
+      const r = await api('/api/contacts/bersihkan-gagal', {
+        method: 'POST',
+        body: { campaignId: idKampanye, hanyaTidakTerdaftar: hanyaMati.checked, terapkan: false },
+      });
+      hasil.innerHTML = '';
+      if (r.jumlah === 0) {
+        hasil.appendChild(h('div', { class: 'sukses', text: 'Tidak ada nomor yang perlu dibersihkan dari kampanye ini.' }));
+        return;
+      }
+      hasil.appendChild(h('div', { class: 'peringatan' },
+        h('strong', { text: `${fmtAngka(r.jumlah)} nomor akan ditandai tidak aktif.` })));
+      const tbody = h('tbody');
+      for (const c of r.contoh) {
+        tbody.appendChild(h('tr', {},
+          h('td', { text: c.name || '(tanpa nama)' }),
+          h('td', { text: fmtNomor(c.phone) }),
+          h('td', { class: 'kecil', text: c.sebab || '-' })));
+      }
+      hasil.appendChild(h('div', { class: 'tabel-gulir' }, h('table', {}, tbody)));
+      if (r.jumlah > r.contoh.length) {
+        hasil.appendChild(h('div', { class: 'kecil', text: `…dan ${fmtAngka(r.jumlah - r.contoh.length)} nomor lainnya.` }));
+      }
+    }
+    hanyaMati.addEventListener('change', () => hitung().catch((e) => App.galat(e.message)));
+
+    App.dialog({
+      judul: 'Bersihkan nomor tidak aktif',
+      isi,
+      lebar: true,
+      tombolUtama: 'Tandai tidak aktif',
+      onSimpan: async () => {
+        const r = await api('/api/contacts/bersihkan-gagal', {
+          method: 'POST',
+          body: { campaignId: idKampanye, hanyaTidakTerdaftar: hanyaMati.checked, terapkan: true },
+        });
+        App.sukses(`${r.diubah} nomor ditandai tidak aktif dan tidak akan ikut broadcast berikutnya.`);
+        muatUlang();
+      },
+    });
+    hitung().catch((e) => App.galat(e.message));
+  }
 
   window.App.hentikanPengulangKampanye = hentikanPengulang;
 })();

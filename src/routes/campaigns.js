@@ -6,7 +6,7 @@ const { requireAuth } = require('../auth');
 const settings = require('../settings');
 const wa = require('../whatsapp');
 const { buildComponents, renderPreview } = require('../template-engine');
-const { resolveAudience, describeAudience } = require('../audience');
+const { resolveAudience, hitungAudience, describeAudience } = require('../audience');
 const { normalizePhone } = require('../phone');
 const { toCsv } = require('../csv');
 const queue = require('../queue');
@@ -111,7 +111,8 @@ router.post('/preview', (req, res) => {
   try {
     const { templateName, language, mapping = {}, audience = {} } = req.body || {};
     const { row, components } = getTemplateOrThrow(templateName, language);
-    const contacts = resolveAudience(audience);
+    const ringkasan = hitungAudience(audience, templateName);
+    const contacts = resolveAudience(audience, templateName);
 
     const samples = contacts.slice(0, 3).map((contact) => ({
       phone: contact.phone,
@@ -132,6 +133,7 @@ router.post('/preview', (req, res) => {
       ok: true,
       templateStatus: row.status,
       recipients: contacts.length,
+      ringkasan,
       audienceLabel: describeAudience(audience),
       samples,
       warnings: [...missingCounter.entries()].map(([label, count]) => ({ label, count })),
@@ -189,8 +191,12 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: `Template "${templateName}" berstatus ${row.status}. Hanya template APPROVED yang bisa dikirim.` });
     }
 
-    const contacts = resolveAudience(audience);
-    if (contacts.length === 0) return res.status(400).json({ error: 'Tidak ada penerima yang cocok dengan pilihan kamu.' });
+    const contacts = resolveAudience(audience, templateName);
+    if (contacts.length === 0) {
+      return res.status(400).json({
+        error: 'Tidak ada penerima yang cocok. Kemungkinan semuanya sudah pernah menerima template ini, atau baru saja dikirimi broadcast lain.',
+      });
+    }
 
     const rate = Math.min(6000, Math.max(1, Number(rate_per_minute) || Number(settings.get('rate_per_minute')) || 60));
     let status = 'draft';

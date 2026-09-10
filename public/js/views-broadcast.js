@@ -7,7 +7,10 @@
     langkah: 1,
     template: null,
     mapping: {},
-    audience: { type: 'all', tags: [], tagMode: 'any', ids: [], onlyOptIn: true },
+    audience: {
+      type: 'all', tags: [], tagMode: 'any', ids: [], onlyOptIn: true,
+      batas: 0, lewatiTemplateIni: true, lewatiHariTerakhir: 0,
+    },
     nama: '',
     rate: 60,
     jadwal: '',
@@ -211,11 +214,33 @@
     const optIn = h('input', { type: 'checkbox', checked: draf.audience.onlyOptIn });
     optIn.addEventListener('change', () => { draf.audience.onlyOptIn = optIn.checked; hitung(); });
 
+    // ---- Pengiriman bertahap untuk database besar ----
+    const batas = h('input', { type: 'number', min: '0', value: String(draf.audience.batas || 0), placeholder: '0 = tanpa batas' });
+    const lewatiTemplate = h('input', { type: 'checkbox', checked: draf.audience.lewatiTemplateIni !== false });
+    const lewatiHari = h('input', { type: 'number', min: '0', value: String(draf.audience.lewatiHariTerakhir || 0) });
+    [batas, lewatiHari].forEach((el) => el.addEventListener('change', () => hitung()));
+    lewatiTemplate.addEventListener('change', () => hitung());
+
+    const bertahap = h('div', { style: 'border:1px solid var(--garis);border-radius:10px;padding:.8rem;margin-top:1rem' },
+      h('strong', { text: 'Pengiriman bertahap' }),
+      h('div', { class: 'kecil', style: 'margin-bottom:.5rem' },
+        'Berguna kalau jumlah kontak melebihi batas harian dari Meta. Sisa penerima otomatis terhitung untuk pengiriman berikutnya.'),
+      h('label', { text: 'Kirim maksimal berapa orang kali ini' }), batas,
+      h('div', { class: 'kecil', text: 'Isi 0 kalau ingin mengirim ke semua yang cocok. Isi 1000 kalau batas harianmu 1000.' }),
+      h('label', { class: 'inline', style: 'margin-top:.7rem' }, lewatiTemplate,
+        'Lewati kontak yang sudah pernah menerima template ini'),
+      h('div', { class: 'kecil', text: 'Inilah yang membuat kamu tidak perlu mencatat manual siapa yang sudah dikirimi. Besok tinggal ulangi, yang sudah terkirim otomatis dilompati.' }),
+      h('label', { text: 'Lewati yang sudah menerima broadcast apa pun dalam (hari)' }), lewatiHari,
+      h('div', { class: 'kecil', text: 'Isi 0 untuk mematikan. Isi 7 supaya satu orang tidak menerima lebih dari sekali seminggu.' }));
+
     const jumlah = h('div', { class: 'info', text: 'Menghitung penerima…' });
 
     async function hitung() {
       bungkusTag.hidden = pilihJenis.value !== 'tags';
       draf.audience.type = pilihJenis.value;
+      draf.audience.batas = Number(batas.value) || 0;
+      draf.audience.lewatiTemplateIni = lewatiTemplate.checked;
+      draf.audience.lewatiHariTerakhir = Number(lewatiHari.value) || 0;
       try {
         const hasil = await api('/api/campaigns/preview', {
           method: 'POST',
@@ -227,10 +252,19 @@
           },
         });
         draf.pratinjau = hasil;
+        const r = hasil.ringkasan || { cocok: hasil.recipients, dikirim: hasil.recipients, sisa: 0 };
+        jumlah.innerHTML = '';
         jumlah.className = hasil.recipients > 0 ? 'sukses' : 'peringatan';
-        jumlah.textContent = hasil.recipients > 0
-          ? `${fmtAngka(hasil.recipients)} kontak akan menerima pesan ini.`
-          : 'Tidak ada kontak yang cocok. Ubah pilihan di atas.';
+        if (hasil.recipients === 0) {
+          jumlah.textContent = 'Tidak ada kontak yang cocok. Kemungkinan semuanya sudah pernah menerima template ini, atau baru saja dikirimi broadcast lain.';
+        } else {
+          jumlah.appendChild(h('div', {}, h('strong', { text: `${fmtAngka(r.dikirim)} kontak akan menerima pesan ini sekarang.` })));
+          if (r.sisa > 0) {
+            jumlah.appendChild(h('div', { class: 'kecil', style: 'margin-top:.3rem' },
+              `Dari ${fmtAngka(r.cocok)} kontak yang cocok, sisa ${fmtAngka(r.sisa)} orang tertunda. `
+              + 'Besok tinggal ulangi broadcast ini dengan pengaturan yang sama, dan yang sudah terkirim otomatis dilompati.'));
+          }
+        }
       } catch (err) {
         jumlah.className = 'galat';
         jumlah.textContent = err.message;
@@ -244,6 +278,7 @@
     panel.appendChild(bungkusTag);
     panel.appendChild(h('label', { class: 'inline', style: 'margin-top:.8rem' }, optIn,
       'Hanya kirim ke kontak yang sudah opt-in (sangat disarankan)'));
+    panel.appendChild(bertahap);
     panel.appendChild(jumlah);
     panel.appendChild(h('div', { class: 'baris', style: 'margin-top:1rem' },
       h('button', { type: 'button', class: 'sekunder', text: '‹ Kembali', onclick: () => { draf.langkah = 2; gambar(); } }),

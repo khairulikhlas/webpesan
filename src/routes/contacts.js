@@ -245,4 +245,67 @@ router.post('/import', (req, res) => {
   res.json({ ok: true, summary, columns: headers });
 });
 
+/**
+ * Membersihkan nomor yang terbukti tidak aktif berdasarkan hasil broadcast.
+ *
+ * Kode 131026 dari WhatsApp berarti pesan tidak bisa sampai: nomornya tidak
+ * terdaftar di WhatsApp atau tidak dapat menerima pesan. Nomor seperti ini
+ * hanya membuang kuota harian dan menurunkan kualitas nomor pengirim, jadi
+ * sebaiknya dikeluarkan dari daftar penerima.
+ *
+ * Body:
+ *   { campaignId: 12,            // kosongkan untuk memeriksa seluruh riwayat
+ *     hanyaTidakTerdaftar: true, // false = semua yang gagal, apa pun sebabnya
+ *     terapkan: false }          // false = hanya menghitung, belum mengubah apa pun
+ */
+router.post('/bersihkan-gagal', (req, res) => {
+  const campaignId = Number(req.body?.campaignId) || 0;
+  const hanyaTidakTerdaftar = req.body?.hanyaTidakTerdaftar !== false;
+  const terapkan = req.body?.terapkan === true;
+
+  const where = ["m.status = 'failed'", 'm.contact_id IS NOT NULL'];
+  const params = [];
+  if (campaignId > 0) { where.push('m.campaign_id = ?'); params.push(campaignId); }
+  if (hanyaTidakTerdaftar) { where.push("m.error_code = '131026'"); }
+
+  const rows = db.prepare(`
+    SELECT DISTINCT c.id, c.phone, c.name, m.error_code, m.error_detail
+    FROM outbound_messages m
+    JOIN contacts c ON c.id = m.contact_id
+    WHERE ${where.join(' AND ')}
+      AND c.opt_in = 1
+    ORDER BY c.id ASC
+  `).all(...params);
+
+  if (!terapkan) {
+    return res.json({
+      ok: true,
+      jumlah: rows.length,
+      contoh: rows.slice(0, 10).map((r) => ({ phone: r.phone, name: r.name, sebab: r.error_detail || r.error_code })),
+    });
+  }
+
+  if (rows.length === 0) return res.json({ ok: true, jumlah: 0, diubah: 0 });
+
+  const ids = rows.map((r) => r.id);
+  const update = db.prepare(`
+    UPDATE contacts
+    SET opt_in = 0, opt_out_at = datetime('now'), updated_at = datetime('now'),
+        tags = CASE
+          WHEN (',' || lower(replace(tags, ' ', '')) || ',') LIKE '%,nomor-tidak-aktif,%' THEN tags
+          WHEN tags = '' THEN 'nomor-tidak-aktif'
+          ELSE tags || ',nomor-tidak-aktif'
+        END,
+        notes = CASE WHEN notes = '' THEN ? ELSE notes || ' | ' || ? END
+    WHERE id = ?
+  `);
+  const catatan = `Ditandai tidak aktif otomatis pada ${new Date().toISOString().slice(0, 10)} karena pesan tidak sampai.`;
+  const tx = db.transaction(() => { for (const id of ids) update.run(catatan, catatan, id); });
+  tx();
+
+  logActivity(req.user.id, 'contact.bersihkan_gagal',
+    `${ids.length} nomor ditandai tidak aktif${campaignId ? ` dari kampanye #${campaignId}` : ''}`);
+  res.json({ ok: true, jumlah: rows.length, diubah: ids.length });
+});
+
 module.exports = router;
