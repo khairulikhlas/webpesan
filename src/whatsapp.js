@@ -252,6 +252,31 @@ async function hapusTemplate(name) {
   return graphRequest(`${wabaId}/message_templates`, { method: 'DELETE', query: { name } });
 }
 
+/**
+ * Memeriksa apakah WhatsApp Business Account sudah "berlangganan" ke aplikasi.
+ *
+ * Ini langkah yang sering terlewat. Mendaftarkan URL webhook di App Dashboard
+ * saja belum cukup: akun WhatsApp-nya juga harus dikaitkan ke aplikasi, kalau
+ * tidak Meta tidak akan pernah mengirim status pesan maupun balasan pelanggan.
+ */
+async function cekLanggananWebhook() {
+  const { wabaId } = cfg();
+  if (!wabaId) throw new WhatsAppError('WhatsApp Business Account ID belum diisi di Pengaturan.', { fatal: true });
+  const res = await graphRequest(`${wabaId}/subscribed_apps`);
+  const daftar = (res?.data || []).map((d) => ({
+    id: d?.whatsapp_business_api_data?.id || '',
+    nama: d?.whatsapp_business_api_data?.name || '',
+  }));
+  return { berlangganan: daftar.length > 0, aplikasi: daftar };
+}
+
+/** Mengaitkan akun WhatsApp ke aplikasi supaya webhook mulai dikirim Meta. */
+async function aktifkanLanggananWebhook() {
+  const { wabaId } = cfg();
+  if (!wabaId) throw new WhatsAppError('WhatsApp Business Account ID belum diisi di Pengaturan.', { fatal: true });
+  return graphRequest(`${wabaId}/subscribed_apps`, { method: 'POST' });
+}
+
 /** Cek kredensial: ambil info nomor pengirim. */
 async function getPhoneNumberInfo() {
   const { phoneNumberId } = cfg();
@@ -270,6 +295,8 @@ module.exports = {
   markAsRead,
   listTemplates,
   getPhoneNumberInfo,
+  cekLanggananWebhook,
+  aktifkanLanggananWebhook,
   unggahBerkasContoh,
   buatTemplate,
   hapusTemplate,

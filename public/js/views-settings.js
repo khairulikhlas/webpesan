@@ -89,9 +89,65 @@
           : 'PERHATIAN: Meta hanya menerima alamat HTTPS publik. Ini masih alamat lokal, jadi webhook belum bisa didaftarkan.'),
       barisSalin('Verify token', s.verify_token, 'Tempel persis di kolom "Verify token" pada halaman konfigurasi Meta.'));
 
+    // ---- Pemeriksa kesiapan webhook ----
+    const hasilPeriksa = h('div', { style: 'margin-top:.8rem' });
+    const tombolPeriksa = h('button', {
+      type: 'button', text: '🔍 Periksa kesiapan webhook',
+      onclick: async () => {
+        tombolPeriksa.disabled = true;
+        hasilPeriksa.innerHTML = '';
+        hasilPeriksa.appendChild(h('div', { class: 'info', text: 'Memeriksa…' }));
+        try {
+          const r = await api('/api/settings/webhook-check', { method: 'POST' });
+          hasilPeriksa.innerHTML = '';
+          hasilPeriksa.appendChild(h('div', { class: r.siap ? 'sukses' : 'peringatan' },
+            h('strong', { text: r.siap ? 'Webhook siap digunakan.' : 'Webhook belum lengkap. Ikuti saran di bawah.' })));
+
+          const tbody = h('tbody');
+          for (const l of r.langkah) {
+            tbody.appendChild(h('tr', {},
+              h('td', {}, h('span', { class: 'label ' + (l.ok ? 'hijau' : 'merah'), text: l.ok ? 'OK' : 'Belum' })),
+              h('td', {}, h('strong', { text: l.nama }),
+                h('div', { class: 'kecil', text: l.catatan }),
+                l.saran ? h('div', { class: 'kecil', style: 'color:var(--kuning);margin-top:.2rem', text: '→ ' + l.saran }) : null)));
+          }
+          hasilPeriksa.appendChild(h('div', { class: 'tabel-gulir' }, h('table', {}, tbody)));
+
+          if (r.bisaDihubungkan && bolehUbah) {
+            const tombolHubung = h('button', {
+              type: 'button', style: 'margin-top:.6rem',
+              text: '🔗 Hubungkan sekarang',
+              onclick: async () => {
+                tombolHubung.disabled = true;
+                try {
+                  await api('/api/settings/webhook-subscribe', { method: 'POST' });
+                  App.sukses('Akun WhatsApp berhasil dihubungkan ke aplikasi.');
+                  tombolPeriksa.click();
+                } catch (err) {
+                  App.galat(err.message);
+                  if (err.data?.hint) App.toast(err.data.hint);
+                } finally { tombolHubung.disabled = false; }
+              },
+            });
+            hasilPeriksa.appendChild(tombolHubung);
+          }
+        } catch (err) {
+          hasilPeriksa.innerHTML = '';
+          hasilPeriksa.appendChild(h('div', { class: 'galat', text: err.message }));
+        } finally {
+          tombolPeriksa.disabled = false;
+        }
+      },
+    });
+    panelWebhook.appendChild(h('div', { style: 'border-top:1px solid var(--garis);padding-top:.8rem;margin-top:.8rem' },
+      h('div', { class: 'kecil', style: 'margin-bottom:.5rem' },
+        'Status pesan dan balasan pelanggan tidak masuk? Tekan tombol ini untuk mencari tahu bagian mana yang belum siap.'),
+      tombolPeriksa, hasilPeriksa));
+
     if (bolehUbah) {
       panelWebhook.appendChild(h('button', {
-        type: 'button', class: 'sekunder', text: 'Buat ulang verify token',
+        type: 'button', class: 'sekunder', style: 'margin-top:.8rem',
+        text: 'Buat ulang verify token',
         onclick: async () => {
           const ya = await App.konfirmasi('Verify token lama akan berhenti berlaku dan kamu harus mendaftarkan ulang webhook di Meta. Lanjutkan?', 'Buat ulang token', 'Ya, buat ulang');
           if (!ya) return;

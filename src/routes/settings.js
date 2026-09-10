@@ -96,6 +96,72 @@ router.post('/test', async (req, res) => {
   }
 });
 
+/**
+ * Memeriksa kesiapan webhook secara menyeluruh, lalu memberi saran langkah
+ * perbaikan yang spesifik. Dipakai tombol "Periksa webhook" di halaman ini.
+ */
+router.post('/webhook-check', async (req, res) => {
+  const hasil = { langkah: [], siap: false };
+  const s = settings.getAll();
+
+  const tambah = (nama, ok, catatan, saran = '') => hasil.langkah.push({ nama, ok, catatan, saran });
+
+  // 1. Alamat webhook harus HTTPS publik
+  const base = config.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+  const https = base.startsWith('https://');
+  tambah('Alamat webhook memakai HTTPS', https, `${base}/webhook`,
+    https ? '' : 'Meta hanya mengirim data ke alamat HTTPS. Pastikan SSL aktif dan PUBLIC_URL sudah https.');
+
+  // 2. Verifikasi URL pernah berhasil
+  const verifikasi = db.prepare("SELECT received_at FROM webhook_logs WHERE kind = 'verify' AND ok = 1 ORDER BY id DESC LIMIT 1").get();
+  tambah('URL webhook sudah diverifikasi Meta', Boolean(verifikasi),
+    verifikasi ? `Terakhir berhasil ${verifikasi.received_at}` : 'Belum pernah berhasil',
+    verifikasi ? '' : 'Daftarkan Callback URL dan Verify token di App Dashboard Meta, lalu tekan Verify and save.');
+
+  // 3. Akun WhatsApp harus berlangganan ke aplikasi
+  try {
+    const langganan = await wa.cekLanggananWebhook();
+    tambah('Akun WhatsApp terhubung ke aplikasi', langganan.berlangganan,
+      langganan.berlangganan
+        ? `Terhubung ke: ${langganan.aplikasi.map((a) => a.nama || a.id).join(', ')}`
+        : 'Belum ada aplikasi yang terhubung',
+      langganan.berlangganan ? '' : 'Tekan tombol "Hubungkan sekarang" di bawah. Tanpa ini Meta tidak akan mengirim status pesan maupun balasan.');
+    hasil.bisaDihubungkan = !langganan.berlangganan;
+  } catch (err) {
+    tambah('Akun WhatsApp terhubung ke aplikasi', false, err.detail || err.message,
+      'Periksa kembali WhatsApp Business Account ID dan Access Token di halaman ini.');
+  }
+
+  // 4. Sudah pernah menerima data sungguhan (bukan sekadar verifikasi)
+  const peristiwa = db.prepare("SELECT received_at FROM webhook_logs WHERE kind = 'event' AND ok = 1 ORDER BY id DESC LIMIT 1").get();
+  tambah('Sudah pernah menerima data dari Meta', Boolean(peristiwa),
+    peristiwa ? `Terakhir ${peristiwa.received_at}` : 'Belum pernah menerima satu pun',
+    peristiwa ? '' : 'Setelah tiga langkah di atas hijau, centang field "messages" di App Dashboard Meta pada bagian Webhook fields.');
+
+  // 5. App Secret untuk memverifikasi keaslian data
+  tambah('App Secret terisi', Boolean(s.app_secret), s.app_secret ? 'Terisi' : 'Belum diisi',
+    s.app_secret ? '' : 'Tanpa App Secret, data webhook tetap diterima tetapi keasliannya tidak diperiksa.');
+
+  hasil.siap = hasil.langkah.slice(0, 4).every((l) => l.ok);
+  res.json(hasil);
+});
+
+/** Mengaitkan akun WhatsApp ke aplikasi (langkah yang paling sering terlewat). */
+router.post('/webhook-subscribe', requireAdmin, async (req, res) => {
+  try {
+    await wa.aktifkanLanggananWebhook();
+    const langganan = await wa.cekLanggananWebhook();
+    logActivity(req.user.id, 'settings.webhook_subscribe', 'Akun WhatsApp dihubungkan ke aplikasi');
+    res.json({ ok: true, berlangganan: langganan.berlangganan, aplikasi: langganan.aplikasi });
+  } catch (err) {
+    res.status(400).json({
+      error: err.detail || err.message,
+      code: err.code || '',
+      hint: 'Access Token perlu izin whatsapp_business_management. Pastikan System User punya Full control atas WhatsApp Account kamu.',
+    });
+  }
+});
+
 router.get('/webhook-logs', (req, res) => {
   const rows = db.prepare('SELECT id, kind, ok, note, substr(raw, 1, 1500) AS raw, received_at FROM webhook_logs ORDER BY id DESC LIMIT 50').all();
   res.json({ logs: rows });
