@@ -64,6 +64,80 @@
       h('label', { for: 's-appname', text: 'Nama aplikasi (muncul di judul tab dan pojok kiri atas)' }),
       h('input', { id: 's-appname', type: 'text', value: s.app_name, disabled: !bolehUbah, placeholder: 'CRM Cinta Dakwah' }),
       (() => {
+        // ---- Ikon aplikasi (tab browser & layar utama HP) ----
+        const pratinjauIkon = h('div', { style: 'margin:.5rem 0' });
+        const pesanIkon = h('div');
+
+        const segarkanIkon = () => {
+          pratinjauIkon.innerHTML = '';
+          pratinjauIkon.appendChild(h('div', { class: 'baris', style: 'gap:.8rem;align-items:center' },
+            h('img', {
+              src: '/app-icon?v=' + Date.now(), alt: 'Ikon aplikasi sekarang',
+              style: 'width:64px;height:64px;border-radius:14px;border:1px solid var(--garis)',
+            }),
+            h('div', { class: 'kecil' }, 'Begini ikon yang dipakai sekarang di tab browser dan layar utama HP.')));
+        };
+
+        const berkasIkon = h('input', { type: 'file', accept: 'image/png', disabled: !bolehUbah });
+        berkasIkon.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          pesanIkon.innerHTML = '';
+          pesanIkon.appendChild(h('div', { class: 'info', text: 'Memeriksa berkas…' }));
+
+          const gambar = new Image();
+          const pembaca = new FileReader();
+          pembaca.onload = () => {
+            gambar.onload = async () => {
+              const sisi = Math.min(gambar.width, gambar.height);
+              const rasio = Math.max(gambar.width, gambar.height) / sisi;
+              pesanIkon.innerHTML = '';
+              if (sisi < 192) {
+                pesanIkon.appendChild(h('div', { class: 'galat' },
+                  `Ukuran gambar ${gambar.width}x${gambar.height} piksel terlalu kecil. `
+                  + 'Android meminta minimal 192x192 piksel agar aplikasi bisa dipasang.'));
+                return;
+              }
+              if (rasio > 1.15) {
+                pesanIkon.appendChild(h('div', { class: 'peringatan' },
+                  `Gambar ini ${gambar.width}x${gambar.height} piksel, bentuknya memanjang. `
+                  + 'Ikon aplikasi sebaiknya persegi, kalau tidak bagian sisinya akan terpotong di HP. '
+                  + 'Pakai logo versi persegi, bukan yang ada tulisan panjangnya.'));
+              }
+              try {
+                const hasil = await api('/api/media', {
+                  method: 'POST',
+                  body: { filename: file.name, contentType: 'image/png', data: String(pembaca.result).split(',')[1] || '' },
+                });
+                await api('/api/settings', { method: 'PUT', body: { icon_media_id: hasil.id } });
+                pesanIkon.appendChild(h('div', { class: 'sukses' },
+                  'Ikon diperbarui. Tekan Ctrl + Shift + R untuk melihat perubahannya di tab browser. '
+                  + 'Di HP, hapus dulu aplikasi yang terpasang lalu pasang ulang agar ikonnya ikut berganti.'));
+                segarkanIkon();
+              } catch (err) {
+                pesanIkon.appendChild(h('div', { class: 'galat', text: err.message }));
+              }
+            };
+            gambar.onerror = () => {
+              pesanIkon.innerHTML = '';
+              pesanIkon.appendChild(h('div', { class: 'galat', text: 'Berkas tidak bisa dibaca sebagai gambar PNG.' }));
+            };
+            gambar.src = String(pembaca.result);
+          };
+          pembaca.readAsDataURL(file);
+        });
+
+        const bagianIkon = h('div', { style: 'margin-top:1.2rem;border-top:1px solid var(--garis);padding-top:.9rem' },
+          h('label', { text: 'Ikon aplikasi' }),
+          h('div', { class: 'kecil', style: 'margin-bottom:.5rem' },
+            'Dipakai untuk ikon tab browser dan ikon aplikasi di layar utama HP. ',
+            'Harus PNG persegi, minimal 192x192 piksel. Pakai logo versi ringkas tanpa tulisan panjang, ',
+            'karena di HP ikon ditampilkan kecil.'),
+          bolehUbah ? berkasIkon : null,
+          pesanIkon,
+          pratinjauIkon);
+        setTimeout(segarkanIkon, 0);
+
         const pratinjau = h('div', { style: 'margin:.5rem 0' });
         const alamat = h('input', {
           id: 's-logo', type: 'text', value: s.logo_url, disabled: !bolehUbah,
@@ -92,7 +166,8 @@
               onclick: () => App.galeriMedia((url) => { alamat.value = url; segarkan(); App.sukses('Logo dipilih. Jangan lupa tekan Simpan pengaturan.'); }),
             }) : null),
           h('div', { class: 'kecil', text: 'Sebaiknya PNG berlatar transparan, lebar sekitar 400 piksel. Logo menggantikan tulisan nama di layar masuk dan bilah samping.' }),
-          pratinjau);
+          pratinjau,
+          bagianIkon);
       })(),
       h('label', { for: 's-nama', text: 'Nama bisnis / lembaga' }),
       h('input', { id: 's-nama', type: 'text', value: s.business_name, disabled: !bolehUbah }),

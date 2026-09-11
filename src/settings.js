@@ -23,6 +23,7 @@ const DEFAULTS = {
   api_key: '',
   app_name: 'CRM Cinta Dakwah',
   logo_url: '',
+  icon_media_id: '',
   business_name: 'Cinta Dakwah',
 };
 

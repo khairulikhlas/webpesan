@@ -9,7 +9,7 @@
  * tampilannya tetap terbuka memakai simpanan terakhir.
  */
 
-const NAMA_SIMPANAN = 'crm-cinta-dakwah-v1';
+const NAMA_SIMPANAN = 'crm-cinta-dakwah-v2';
 const BERKAS_INTI = [
   '/',
   '/css/style.css',
@@ -23,9 +23,6 @@ const BERKAS_INTI = [
   '/js/views-inbox.js',
   '/js/views-settings.js',
   '/js/views-guide.js',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/manifest.webmanifest',
 ];
 
 self.addEventListener('install', (event) => {
@@ -55,7 +52,8 @@ self.addEventListener('fetch', (event) => {
   // Data dan berkas media selalu diambil langsung, tidak pernah disimpan,
   // supaya status pesan dan isi percakapan tidak pernah basi.
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/media/')
-      || url.pathname === '/webhook' || url.pathname === '/healthz') {
+      || url.pathname === '/webhook' || url.pathname === '/healthz'
+      || url.pathname === '/app-icon' || url.pathname === '/manifest.webmanifest') {
     return;
   }
 

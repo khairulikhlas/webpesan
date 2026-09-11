@@ -61,11 +61,63 @@ app.use('/api/media', require('./src/routes/media'));
 app.use('/api/v1', require('./src/routes/api-publik'));
 app.use('/api/stats', require('./src/routes/stats'));
 
+// ---------------------------------------------------------------------------
+// Ikon aplikasi dan manifest
+//
+// Keduanya disusun saat diminta, bukan berupa berkas tetap, supaya ikon yang
+// diunggah pemilik aplikasi langsung dipakai sebagai ikon tab browser maupun
+// ikon aplikasi di HP.
+// ---------------------------------------------------------------------------
+const appIcon = require('./src/app-icon');
+
+app.get('/app-icon', (req, res) => {
+  const ikon = appIcon.ikonSekarang();
+  res.setHeader('Content-Type', ikon.mime);
+  // Alamatnya tetap sama setiap saat, jadi penanda versi dipakai agar browser
+  // tahu kapan harus mengambil ulang.
+  res.setHeader('ETag', `"${ikon.versi}"`);
+  res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+  if (req.headers['if-none-match'] === `"${ikon.versi}"`) return res.status(304).end();
+  res.sendFile(ikon.jalur);
+});
+
+app.get('/manifest.webmanifest', (req, res) => {
+  const ikon = appIcon.ikonSekarang();
+  const nama = settings.get('app_name') || 'CRM Cinta Dakwah';
+  const ukuran = `${ikon.lebar}x${ikon.tinggi}`;
+  const alamat = `/app-icon?v=${ikon.versi}`;
+
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({
+    name: nama,
+    short_name: nama.length > 12 ? nama.slice(0, 12).trim() : nama,
+    description: 'Kirim broadcast WhatsApp dan layani balasan donatur dari satu tempat.',
+    lang: 'id',
+    dir: 'ltr',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait-primary',
+    background_color: '#3a3a3c',
+    theme_color: '#3a3a3c',
+    icons: [
+      { src: alamat, sizes: ukuran, type: ikon.mime, purpose: 'any' },
+      { src: alamat, sizes: ukuran, type: ikon.mime, purpose: 'maskable' },
+    ],
+    shortcuts: [
+      { name: 'Kotak Masuk', url: '/#/inbox', description: 'Baca dan balas pesan donatur' },
+      { name: 'Buat Broadcast', url: '/#/broadcast', description: 'Kirim pesan ke banyak kontak' },
+    ],
+  });
+});
+
 // Nama aplikasi dibutuhkan halaman login, jadi endpoint ini tidak perlu login.
 app.get('/api/app-info', (req, res) => {
   res.json({
     app_name: settings.get('app_name') || 'CRM Cinta Dakwah',
     logo_url: settings.get('logo_url') || '',
+    icon_versi: appIcon.ikonSekarang().versi,
   });
 });
 

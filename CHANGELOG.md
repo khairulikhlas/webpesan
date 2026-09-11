@@ -6,6 +6,24 @@ lama yang tersimpan ikut disegarkan.
 
 ---
 
+## 11 September 2026 — Ikon aplikasi mengikuti logo
+
+**Perbaikan: ikon tab dan ikon HP tidak ikut berganti**
+- Sebelumnya ikon tab browser dan ikon aplikasi di HP menunjuk berkas tetap,
+  sehingga tetap memakai gambar bawaan meski logo lembaga sudah diunggah
+- Sekarang keduanya mengikuti ikon yang diunggah di halaman Pengaturan
+
+**Pengunggah ikon aplikasi**
+- Pengaturan → **Ikon aplikasi**. Berkas diperiksa lebih dulu: ditolak bila
+  kurang dari 192x192 piksel, dan diperingatkan bila bentuknya memanjang
+  karena akan terpotong di layar HP
+- Kalau berkas ikon terhapus, aplikasi kembali memakai ikon bawaan
+
+> Setelah mengganti ikon, di HP perlu **hapus aplikasi lalu pasang ulang**.
+> Android menyimpan ikon saat pemasangan dan tidak menggantinya sendiri.
+
+---
+
 ## 11 September 2026 — Logo lembaga & warna merek
 
 **Logo lembaga bisa dipasang sendiri**
