@@ -145,6 +145,62 @@ async function sendText({ to, body, previewUrl = false }) {
   return { wamid: res?.messages?.[0]?.id || null, response: res, payload };
 }
 
+/**
+ * Kirim gambar, video, atau dokumen. Dipakai untuk membalas pelanggan,
+ * misalnya mengirimkan gambar QRIS donasi.
+ * Sama seperti pesan teks, hanya boleh dalam jendela 24 jam.
+ */
+async function sendMedia({ to, type = 'image', link, caption = '', filename = '' }) {
+  const { phoneNumberId } = cfg();
+  if (!phoneNumberId) throw new WhatsAppError('Phone Number ID belum diisi di Pengaturan.', { fatal: true });
+  if (!link) throw new WhatsAppError('Alamat berkas kosong.');
+
+  const isi = { link };
+  if (caption && ['image', 'video', 'document'].includes(type)) isi.caption = caption;
+  if (type === 'document' && filename) isi.filename = filename;
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: String(to),
+    type,
+    [type]: isi,
+  };
+  const res = await graphRequest(`${phoneNumberId}/messages`, { method: 'POST', body: payload });
+  return { wamid: res?.messages?.[0]?.id || null, response: res, payload };
+}
+
+/**
+ * Mengambil berkas yang dikirim pelanggan (misalnya foto bukti transfer).
+ * Prosesnya dua tahap: meminta alamat unduhannya, lalu mengunduh isinya.
+ * Alamat dari Meta hanya berlaku sebentar dan tetap memerlukan Access Token.
+ */
+async function unduhMediaMasuk(mediaId) {
+  const { token } = cfg();
+  const info = await graphRequest(String(mediaId));
+  if (!info?.url) throw new WhatsAppError('Meta tidak memberikan alamat unduhan berkas.', { raw: info });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  let response;
+  try {
+    response = await fetch(info.url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new WhatsAppError(`Gagal mengunduh berkas: ${err.message}`, { retryable: true });
+  }
+  clearTimeout(timer);
+  if (!response.ok) {
+    throw new WhatsAppError(`Gagal mengunduh berkas (HTTP ${response.status}).`, { httpStatus: response.status });
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return { buffer, mime: info.mime_type || response.headers.get('content-type') || '', size: buffer.length };
+}
+
 /** Tandai pesan masuk sebagai sudah dibaca (centang biru di sisi pelanggan). */
 async function markAsRead(wamid) {
   const { phoneNumberId } = cfg();
@@ -292,6 +348,8 @@ module.exports = {
   graphUrl,
   sendTemplate,
   sendText,
+  sendMedia,
+  unduhMediaMasuk,
   markAsRead,
   listTemplates,
   getPhoneNumberInfo,

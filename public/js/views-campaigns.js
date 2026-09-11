@@ -136,6 +136,23 @@
 
       konten.appendChild(barisStatistik(c.stats));
 
+      // Rincian penyebab kegagalan, supaya jelas apa yang harus diperbaiki.
+      if ((c.penyebabGagal || []).length) {
+        const tbodyGagal = h('tbody');
+        for (const g of c.penyebabGagal) {
+          tbodyGagal.appendChild(h('tr', {},
+            h('td', {}, h('strong', { text: fmtAngka(g.jumlah) })),
+            h('td', {}, h('strong', { text: g.judul }),
+              h('div', { class: 'kecil', text: 'Kode ' + g.kode }),
+              h('div', { class: 'kecil', style: 'margin-top:.2rem', text: g.saran }))));
+        }
+        konten.appendChild(h('div', { class: 'panel' },
+          h('h3', { text: 'Kenapa pesan gagal' }),
+          h('div', { class: 'tabel-gulir' }, h('table', {},
+            h('thead', {}, h('tr', {}, h('th', { text: 'Jumlah' }), h('th', { text: 'Penyebab & saran' }))),
+            tbodyGagal))));
+      }
+
       const pilih = h('select', {},
         h('option', { value: '', selected: filterStatus === '', text: 'Semua status' }),
         ['pending', 'sent', 'delivered', 'read', 'failed', 'canceled'].map((s) =>

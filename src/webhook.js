@@ -12,6 +12,8 @@
 
 const crypto = require('crypto');
 const { db, logActivity } = require('./db');
+const wa = require('./whatsapp');
+const store = require('./media-store');
 const settings = require('./settings');
 const { normalizePhone } = require('./phone');
 
@@ -69,8 +71,11 @@ function extractBody(message) {
       return message.interactive?.button_reply?.title
         || message.interactive?.list_reply?.title
         || '';
-    case 'image': case 'video': case 'document': case 'audio': case 'sticker':
-      return message[type]?.caption || `[${type}]`;
+    case 'image': return message.image?.caption || '[Gambar]';
+    case 'video': return message.video?.caption || '[Video]';
+    case 'document': return message.document?.caption || message.document?.filename || '[Dokumen]';
+    case 'audio': case 'voice': return '[Pesan suara]';
+    case 'sticker': return '[Stiker]';
     case 'location': return `[lokasi] ${message.location?.latitude}, ${message.location?.longitude}`;
     case 'contacts': return '[kartu kontak]';
     case 'reaction': return `[reaksi ${message.reaction?.emoji || ''}]`;
@@ -111,6 +116,33 @@ function applyStatus(status) {
   `).run(state, row.id);
 }
 
+const JENIS_BERMEDIA = ['image', 'video', 'document', 'audio', 'sticker', 'voice'];
+
+/**
+ * Mengunduh berkas yang dikirim pelanggan lalu menyimpannya di server sendiri,
+ * supaya bisa ditampilkan di Kotak Masuk. Alamat berkas dari Meta hanya berlaku
+ * sebentar, jadi harus disalin selagi masih berlaku.
+ *
+ * Dijalankan di latar belakang: webhook harus dijawab cepat, sedangkan
+ * mengunduh berkas bisa memakan waktu.
+ */
+async function unduhBerkasPesan(idPesanMasuk, message) {
+  const jenis = message.type;
+  const mediaId = message?.[jenis]?.id;
+  if (!mediaId) return;
+
+  try {
+    const { buffer, mime } = await wa.unduhMediaMasuk(mediaId);
+    const namaAsli = message?.[jenis]?.filename || `${jenis}-dari-pelanggan`;
+    const hasil = store.simpanBerkas({ buffer, mime, originalName: namaAsli, abaikanBatas: true });
+    db.prepare('UPDATE inbound_messages SET media_id = ? WHERE id = ?').run(hasil.id, idPesanMasuk);
+  } catch (err) {
+    console.error(`[webhook] gagal mengunduh berkas ${jenis} dari pelanggan:`, err.message);
+    db.prepare('INSERT INTO webhook_logs (kind, ok, note, raw) VALUES (?, ?, ?, ?)')
+      .run('media', 0, `Gagal mengunduh berkas ${jenis}: ${err.message}`, String(mediaId));
+  }
+}
+
 function applyInbound(message, profileByWaId) {
   const phone = normalizePhone(message.from, settings.get('default_country_code')) || String(message.from || '');
   if (!phone) return;
@@ -122,10 +154,16 @@ function applyInbound(message, profileByWaId) {
   const existing = message.id ? db.prepare('SELECT id FROM inbound_messages WHERE wamid = ?').get(message.id) : null;
   if (existing) return; // hindari duplikat kalau Meta mengirim ulang
 
-  db.prepare(`
+  const info = db.prepare(`
     INSERT INTO inbound_messages (wamid, contact_id, phone, profile_name, type, body, raw)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(message.id || null, contact.id, phone, profileName, message.type || 'text', body, JSON.stringify(message));
+
+  // Gambar bukti transfer dan berkas lain diunduh di latar belakang.
+  if (JENIS_BERMEDIA.includes(message.type)) {
+    unduhBerkasPesan(Number(info.lastInsertRowid), message)
+      .catch((err) => console.error('[webhook] unduh berkas gagal:', err.message));
+  }
 
   db.prepare(`UPDATE contacts SET last_inbound_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(contact.id);
   if (profileName && !contact.name) {

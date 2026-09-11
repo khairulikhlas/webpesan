@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS inbound_messages (
   type        TEXT NOT NULL DEFAULT 'text',
   body        TEXT NOT NULL DEFAULT '',
   raw         TEXT NOT NULL DEFAULT '{}',
+  media_id    TEXT,
   is_read     INTEGER NOT NULL DEFAULT 0,
   received_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -204,6 +205,8 @@ function ensureColumn(table, column, definition) {
 ensureColumn('campaigns', 'scheduled_at', 'TEXT');
 ensureColumn('campaigns', 'last_error', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('outbound_messages', 'next_attempt_at', 'TEXT');
+ensureColumn('inbound_messages', 'media_id', 'TEXT');
+ensureColumn('outbound_messages', 'media_id', 'TEXT');
 
 function logActivity(userId, action, detail = '') {
   try {

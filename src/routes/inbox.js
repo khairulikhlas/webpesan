@@ -5,6 +5,7 @@ const { db, logActivity } = require('../db');
 const { requireAuth } = require('../auth');
 const wa = require('../whatsapp');
 const settings = require('../settings');
+const store = require('../media-store');
 const { normalizePhone } = require('../phone');
 
 const router = express.Router();
@@ -40,17 +41,23 @@ router.get('/thread/:phone', (req, res) => {
   const phone = normalizePhone(req.params.phone, settings.get('default_country_code')) || req.params.phone;
 
   const inbound = db.prepare(`
-    SELECT id, 'in' AS direction, body, type, received_at AS at, '' AS status, '' AS error_detail
-    FROM inbound_messages WHERE phone = ? ORDER BY id ASC LIMIT 300
+    SELECT i.id, 'in' AS direction, i.body, i.type, i.received_at AS at, '' AS status,
+           '' AS error_detail, i.media_id, m.mime AS media_mime
+    FROM inbound_messages i LEFT JOIN media m ON m.id = i.media_id
+    WHERE i.phone = ? ORDER BY i.id ASC LIMIT 300
   `).all(phone);
 
   const outbound = db.prepare(`
-    SELECT id, 'out' AS direction, body_preview AS body, kind AS type,
-           COALESCE(sent_at, created_at) AS at, status, COALESCE(error_detail, '') AS error_detail
-    FROM outbound_messages WHERE phone = ? ORDER BY id ASC LIMIT 300
+    SELECT o.id, 'out' AS direction, o.body_preview AS body, o.kind AS type,
+           COALESCE(o.sent_at, o.created_at) AS at, o.status,
+           COALESCE(o.error_detail, '') AS error_detail, o.media_id, m.mime AS media_mime
+    FROM outbound_messages o LEFT JOIN media m ON m.id = o.media_id
+    WHERE o.phone = ? ORDER BY o.id ASC LIMIT 300
   `).all(phone);
 
-  const messages = [...inbound, ...outbound].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  const messages = [...inbound, ...outbound]
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+    .map((m) => ({ ...m, media_url: m.media_id ? store.alamatPublik(m.media_id, req) : null }));
   db.prepare('UPDATE inbound_messages SET is_read = 1 WHERE phone = ?').run(phone);
 
   const last = db.prepare('SELECT received_at FROM inbound_messages WHERE phone = ? ORDER BY id DESC LIMIT 1').get(phone);
@@ -73,9 +80,20 @@ router.get('/thread/:phone', (req, res) => {
 router.post('/reply', async (req, res) => {
   const phone = normalizePhone(req.body?.phone, settings.get('default_country_code'));
   const body = String(req.body?.body || '').trim();
+  const mediaId = String(req.body?.mediaId || '').trim();
+
   if (!phone) return res.status(400).json({ error: 'Nomor tujuan tidak valid.' });
-  if (!body) return res.status(400).json({ error: 'Isi pesan masih kosong.' });
+  if (!body && !mediaId) return res.status(400).json({ error: 'Isi pesan masih kosong.' });
   if (body.length > 4096) return res.status(400).json({ error: 'Pesan terlalu panjang (maksimal 4096 karakter).' });
+
+  let berkas = null;
+  if (mediaId) {
+    berkas = db.prepare('SELECT * FROM media WHERE id = ?').get(mediaId);
+    if (!berkas) return res.status(400).json({ error: 'Berkas tidak ditemukan di galeri media.' });
+    if (body.length > 1024) {
+      return res.status(400).json({ error: 'Keterangan gambar maksimal 1024 karakter.' });
+    }
+  }
 
   const last = db.prepare('SELECT received_at FROM inbound_messages WHERE phone = ? ORDER BY id DESC LIMIT 1').get(phone);
   const windowOpen = last
@@ -89,12 +107,35 @@ router.post('/reply', async (req, res) => {
 
   const contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
   try {
-    const result = await wa.sendText({ to: phone, body });
+    let result;
+    let jenisPesan = 'text';
+    let pratinjau = body;
+
+    if (berkas) {
+      const mime = String(berkas.mime || '');
+      const jenis = mime.startsWith('image/') ? 'image'
+        : mime.startsWith('video/') ? 'video'
+          : mime.startsWith('audio/') ? 'audio' : 'document';
+      result = await wa.sendMedia({
+        to: phone,
+        type: jenis,
+        link: store.alamatPublik(berkas.id, req),
+        caption: body,
+        filename: berkas.original_name || berkas.id,
+      });
+      jenisPesan = jenis;
+      pratinjau = body || `[${jenis === 'image' ? 'Gambar' : jenis === 'video' ? 'Video' : 'Berkas'}]`;
+    } else {
+      result = await wa.sendText({ to: phone, body });
+    }
+
     db.prepare(`
-      INSERT INTO outbound_messages (campaign_id, contact_id, phone, kind, body_preview, payload, status, wamid, attempts, sent_at)
-      VALUES (NULL, ?, ?, 'text', ?, ?, 'sent', ?, 1, datetime('now'))
-    `).run(contact?.id || null, phone, body.slice(0, 500), JSON.stringify({ body }), result.wamid);
-    logActivity(req.user.id, 'inbox.reply', phone);
+      INSERT INTO outbound_messages (campaign_id, contact_id, phone, kind, body_preview, payload, status, wamid, attempts, sent_at, media_id)
+      VALUES (NULL, ?, ?, ?, ?, ?, 'sent', ?, 1, datetime('now'), ?)
+    `).run(contact?.id || null, phone, jenisPesan, pratinjau.slice(0, 500),
+      JSON.stringify({ body, mediaId: berkas?.id || null }), result.wamid, berkas?.id || null);
+
+    logActivity(req.user.id, 'inbox.reply', `${phone}${berkas ? ' (dengan berkas)' : ''}`);
     res.json({ ok: true, wamid: result.wamid });
   } catch (err) {
     res.status(400).json({ error: err.detail || err.message, code: err.code || '' });

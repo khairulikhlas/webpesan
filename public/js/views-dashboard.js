@@ -20,9 +20,17 @@
     }
 
     if (data.daily.limit > 0 && data.daily.used >= data.daily.limit * 0.8) {
+      const r = data.daily.rincian || {};
       konten.appendChild(h('div', { class: 'peringatan' },
-        `Pemakaian 24 jam terakhir: ${fmtAngka(data.daily.used)} dari batas ${fmtAngka(data.daily.limit)} pesan. `
-        + 'Kalau perlu lebih, naikkan "Batas harian" di Pengaturan.'));
+        h('div', {}, h('strong', {
+          text: `Pemakaian 24 jam terakhir: ${fmtAngka(data.daily.used)} kontak dari batas ${fmtAngka(data.daily.limit)}.`,
+        })),
+        h('div', { class: 'kecil', style: 'margin-top:.3rem' },
+          `Dihitung dari kontak unik yang dikirimi template (${fmtAngka(r.pesan_template || 0)} pesan template ke `
+          + `${fmtAngka(r.kontak_template || 0)} kontak). Balasan kamu di Kotak Masuk sebanyak `
+          + `${fmtAngka(r.balasan || 0)} pesan tidak ikut dihitung, sesuai aturan Meta.`),
+        h('div', { class: 'kecil', style: 'margin-top:.3rem' },
+          'Kalau batas nomormu di Meta memang lebih tinggi, naikkan "Batas harian" di Pengaturan.')));
     }
 
     const kartu = (judul, angka, catatan, warna) => h('div', { class: 'statistik' },

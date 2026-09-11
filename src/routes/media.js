@@ -12,32 +12,15 @@
  * berkali-kali untuk broadcast berikutnya.
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 const express = require('express');
 const { db, logActivity } = require('../db');
 const { requireAuth } = require('../auth');
-const config = require('../config');
+const store = require('../media-store');
 
 const router = express.Router();
 router.use(requireAuth);
 
-const MEDIA_DIR = path.join(config.DATA_DIR, 'media');
-fs.mkdirSync(MEDIA_DIR, { recursive: true });
-
-// Jenis berkas yang diizinkan WhatsApp untuk header template.
-const JENIS = {
-  'image/jpeg': { ext: 'jpg', maks: 5 * 1024 * 1024, label: 'Gambar JPG' },
-  'image/png': { ext: 'png', maks: 5 * 1024 * 1024, label: 'Gambar PNG' },
-  'video/mp4': { ext: 'mp4', maks: 16 * 1024 * 1024, label: 'Video MP4' },
-  'application/pdf': { ext: 'pdf', maks: 100 * 1024 * 1024, label: 'Dokumen PDF' },
-};
-
-function alamatPublik(req, id) {
-  const dasar = config.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
-  return `${dasar}/media/${id}`;
-}
+const alamatPublik = (req, id) => store.alamatPublik(id, req);
 
 router.get('/', (req, res) => {
   const rows = db.prepare(`
@@ -55,12 +38,6 @@ router.get('/', (req, res) => {
  */
 router.post('/', (req, res) => {
   const { filename = '', contentType = '', data = '' } = req.body || {};
-  const jenis = JENIS[String(contentType).toLowerCase()];
-  if (!jenis) {
-    return res.status(400).json({
-      error: `Jenis berkas "${contentType || 'tidak dikenal'}" tidak didukung. Gunakan JPG, PNG, MP4, atau PDF.`,
-    });
-  }
   if (!data) return res.status(400).json({ error: 'Isi berkas kosong.' });
 
   let buffer;
@@ -69,36 +46,30 @@ router.post('/', (req, res) => {
   } catch {
     return res.status(400).json({ error: 'Berkas gagal dibaca.' });
   }
-  if (buffer.length === 0) return res.status(400).json({ error: 'Berkas kosong.' });
-  if (buffer.length > jenis.maks) {
-    return res.status(400).json({
-      error: `Ukuran berkas ${(buffer.length / 1024 / 1024).toFixed(1)} MB melebihi batas ${jenis.maks / 1024 / 1024} MB untuk ${jenis.label}.`,
+
+  try {
+    const hasil = store.simpanBerkas({
+      buffer, mime: contentType, originalName: filename, userId: req.user.id,
     });
+    logActivity(req.user.id, 'media.upload', `${filename} (${(hasil.size / 1024).toFixed(0)} KB)`);
+    res.json({ ok: true, id: hasil.id, url: alamatPublik(req, hasil.id), size: hasil.size });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
-
-  const id = `${crypto.randomBytes(12).toString('hex')}.${jenis.ext}`;
-  fs.writeFileSync(path.join(MEDIA_DIR, id), buffer);
-  db.prepare(`
-    INSERT INTO media (id, original_name, mime, size, uploaded_by) VALUES (?, ?, ?, ?, ?)
-  `).run(id, String(filename).slice(0, 200), contentType, buffer.length, req.user.id);
-
-  logActivity(req.user.id, 'media.upload', `${filename} (${(buffer.length / 1024).toFixed(0)} KB)`);
-  res.json({ ok: true, id, url: alamatPublik(req, id), size: buffer.length });
 });
 
 router.delete('/:id', (req, res) => {
   const id = String(req.params.id);
-  if (!/^[0-9a-f]{24}\.(jpg|png|mp4|pdf)$/.test(id)) {
+  if (!/^[0-9a-f]{24}\.(jpg|png|webp|mp4|ogg|mp3|pdf)$/.test(id)) {
     return res.status(400).json({ error: 'Nama berkas tidak sah.' });
   }
   const row = db.prepare('SELECT * FROM media WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Berkas tidak ditemukan.' });
 
-  try { fs.unlinkSync(path.join(MEDIA_DIR, id)); } catch { /* berkas mungkin sudah hilang */ }
-  db.prepare('DELETE FROM media WHERE id = ?').run(id);
+  store.hapusBerkas(id);
   logActivity(req.user.id, 'media.delete', row.original_name || id);
   res.json({ ok: true });
 });
 
 module.exports = router;
-module.exports.MEDIA_DIR = MEDIA_DIR;
+module.exports.MEDIA_DIR = store.MEDIA_DIR;

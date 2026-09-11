@@ -50,11 +50,42 @@
 
       const riwayat = h('div', { class: 'riwayat' });
       for (const m of data.messages) {
-        const gelembung = h('div', { class: 'gelembung' },
-          h('div', { text: m.body || '(tanpa teks)' }),
-          h('div', { class: 'kaki-pesan' }, fmtTanggal(m.at),
-            m.direction === 'out' ? ' • ' + App.labelStatus(m.status).textContent : ''),
-          m.error_detail ? h('div', { class: 'kecil', style: 'color:var(--merah)', text: m.error_detail }) : null);
+        const gelembung = h('div', { class: 'gelembung' });
+
+        // Gambar bukti transfer dan berkas lain ditampilkan langsung.
+        if (m.media_url) {
+          const mime = String(m.media_mime || '');
+          if (mime.startsWith('image/')) {
+            gelembung.appendChild(h('a', { href: m.media_url, target: '_blank', rel: 'noopener' },
+              h('img', {
+                src: m.media_url, alt: 'Berkas dari percakapan', loading: 'lazy',
+                style: 'max-width:230px;max-height:280px;border-radius:8px;display:block;margin-bottom:.35rem;cursor:zoom-in',
+              })));
+          } else if (mime.startsWith('video/')) {
+            gelembung.appendChild(h('video', {
+              src: m.media_url, controls: true,
+              style: 'max-width:230px;border-radius:8px;display:block;margin-bottom:.35rem',
+            }));
+          } else if (mime.startsWith('audio/')) {
+            gelembung.appendChild(h('audio', { src: m.media_url, controls: true, style: 'display:block;margin-bottom:.35rem' }));
+          } else {
+            gelembung.appendChild(h('a', {
+              href: m.media_url, target: '_blank', rel: 'noopener',
+              style: 'display:block;margin-bottom:.35rem', text: '📄 Buka berkas',
+            }));
+          }
+        } else if (['image', 'video', 'document', 'audio', 'sticker'].includes(m.type) && m.direction === 'in') {
+          gelembung.appendChild(h('div', { class: 'kecil', style: 'color:var(--teks-lembut)', text: 'Berkas sedang diunduh…' }));
+        }
+
+        if (m.body) gelembung.appendChild(h('div', { text: m.body }));
+        else if (!m.media_url) gelembung.appendChild(h('div', { text: '(tanpa teks)' }));
+
+        gelembung.appendChild(h('div', { class: 'kaki-pesan' }, fmtTanggal(m.at),
+          m.direction === 'out' ? ' • ' + App.labelStatus(m.status).textContent : ''));
+        if (m.error_detail) {
+          gelembung.appendChild(h('div', { class: 'kecil', style: 'color:var(--merah)', text: m.error_detail }));
+        }
         riwayat.appendChild(h('div', { class: 'baris-pesan ' + (m.direction === 'out' ? 'keluar' : 'masuk') }, gelembung));
       }
       kolomKanan.appendChild(riwayat);
@@ -87,14 +118,48 @@
           onclick: () => { papanEmoji.hidden = !papanEmoji.hidden; },
         });
 
+        // Lampiran: gambar QRIS, brosur, atau dokumen dari galeri media.
+        let lampiran = null;
+        const infoLampiran = h('div', { hidden: true, style: 'margin-top:.4rem' });
+
+        const pasangLampiran = (m) => {
+          lampiran = m;
+          infoLampiran.hidden = false;
+          infoLampiran.innerHTML = '';
+          infoLampiran.appendChild(h('div', {
+            style: 'display:flex;align-items:center;gap:.5rem;border:1px solid var(--garis);border-radius:9px;padding:.4rem .6rem;background:#fff',
+          },
+          String(m.mime || '').startsWith('image/')
+            ? h('img', { src: m.url, alt: '', style: 'width:42px;height:42px;object-fit:cover;border-radius:6px' })
+            : h('span', { style: 'font-size:1.4rem', text: '📄' }),
+          h('div', { class: 'kolom' },
+            h('div', { class: 'kecil', text: m.original_name || m.id }),
+            h('div', { class: 'kecil', text: 'Akan dikirim bersama pesan ini' })),
+          h('button', {
+            type: 'button', class: 'sekunder kecil-btn', text: 'Batal',
+            onclick: () => { lampiran = null; infoLampiran.hidden = true; infoLampiran.innerHTML = ''; },
+          })));
+        };
+
+        const tombolLampiran = h('button', {
+          type: 'button', class: 'sekunder', title: 'Lampirkan gambar atau berkas', text: '📎',
+          onclick: () => App.galeriMedia((url, m) => pasangLampiran({ ...m, url })),
+        });
+
         const kirim = h('button', { type: 'button', text: 'Kirim balasan' });
         kirim.addEventListener('click', async () => {
           const isi = teks.value.trim();
-          if (!isi) return;
+          if (!isi && !lampiran) return;
           kirim.disabled = true;
           try {
-            await api('/api/inbox/reply', { method: 'POST', body: { phone, body: isi } });
+            await api('/api/inbox/reply', {
+              method: 'POST',
+              body: { phone, body: isi, mediaId: lampiran ? lampiran.id : '' },
+            });
             teks.value = '';
+            lampiran = null;
+            infoLampiran.hidden = true;
+            infoLampiran.innerHTML = '';
             App.sukses('Balasan terkirim.');
             bukaPercakapan(phone);
           } catch (err) {
@@ -103,9 +168,10 @@
             kirim.disabled = false;
           }
         });
-        kolomKanan.appendChild(h('div', { style: 'margin-top:.7rem' }, teks, papanEmoji,
+        kolomKanan.appendChild(h('div', { style: 'margin-top:.7rem' }, teks, papanEmoji, infoLampiran,
           h('div', { class: 'baris', style: 'justify-content:space-between;margin-top:.5rem' },
-            tombolEmoji, kirim)));
+            h('div', { class: 'baris', style: 'gap:.4rem' }, tombolEmoji, tombolLampiran),
+            kirim)));
       } else {
         kolomKanan.appendChild(h('div', { class: 'peringatan', style: 'margin-top:.7rem' },
           'Pelanggan ini terakhir membalas lebih dari 24 jam lalu, jadi WhatsApp tidak mengizinkan pesan teks bebas. ',

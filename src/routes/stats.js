@@ -59,7 +59,11 @@ router.get('/dashboard', (req, res) => {
       menunggu: totals.menunggu || 0,
     },
     unread,
-    daily: { limit: Number(settings.get('daily_limit') || 0), used: queue.sentLast24h() },
+    daily: {
+      limit: Number(settings.get('daily_limit') || 0),
+      used: queue.sentLast24h(),
+      rincian: queue.pemakaian24Jam(),
+    },
     chart: messages7d,
     topErrors,
     readiness: settings.readiness(),

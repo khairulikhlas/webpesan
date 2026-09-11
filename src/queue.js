@@ -30,12 +30,39 @@ function nowIso() {
   return new Date().toISOString().replace('T', ' ').slice(0, 19);
 }
 
+/**
+ * Menghitung pemakaian kuota harian sesuai cara Meta menghitungnya.
+ *
+ * Yang dibatasi Meta adalah jumlah KONTAK UNIK yang kita hubungi lebih dulu
+ * memakai template dalam 24 jam. Balasan kita di kotak masuk (pesan teks dalam
+ * jendela 24 jam) TIDAK ikut dihitung, dan satu kontak yang dikirimi beberapa
+ * template tetap terhitung satu.
+ */
 function sentLast24h() {
   const row = db.prepare(`
-    SELECT COUNT(*) AS n FROM outbound_messages
-    WHERE sent_at IS NOT NULL AND sent_at >= datetime('now', '-1 day')
+    SELECT COUNT(DISTINCT phone) AS n FROM outbound_messages
+    WHERE kind = 'template'
+      AND sent_at IS NOT NULL
+      AND sent_at >= datetime('now', '-1 day')
   `).get();
   return row ? row.n : 0;
+}
+
+/** Rincian pemakaian untuk ditampilkan di dashboard. */
+function pemakaian24Jam() {
+  const baris = db.prepare(`
+    SELECT
+      COUNT(DISTINCT CASE WHEN kind = 'template' THEN phone END) AS kontak_template,
+      SUM(CASE WHEN kind = 'template' THEN 1 ELSE 0 END) AS pesan_template,
+      SUM(CASE WHEN kind <> 'template' THEN 1 ELSE 0 END) AS balasan
+    FROM outbound_messages
+    WHERE sent_at IS NOT NULL AND sent_at >= datetime('now', '-1 day')
+  `).get();
+  return {
+    kontak_template: baris?.kontak_template || 0,
+    pesan_template: baris?.pesan_template || 0,
+    balasan: baris?.balasan || 0,
+  };
 }
 
 function activateScheduled() {
@@ -148,7 +175,9 @@ async function tick() {
     const dailyLimit = Number(settings.get('daily_limit') || 0);
     let remainingToday = dailyLimit > 0 ? dailyLimit - sentLast24h() : Infinity;
     if (remainingToday <= 0) {
-      for (const c of campaigns) pauseCampaign(c.id, `Batas harian ${dailyLimit} pesan/24 jam tercapai. Kampanye dijeda otomatis.`);
+      for (const c of campaigns) {
+        pauseCampaign(c.id, `Batas harian ${dailyLimit} kontak unik per 24 jam tercapai. Kampanye dijeda otomatis dan bisa dilanjutkan setelah kuota pulih.`);
+      }
       return;
     }
 
@@ -202,4 +231,4 @@ function stop() {
   timer = null;
 }
 
-module.exports = { start, stop, tick, sentLast24h };
+module.exports = { start, stop, tick, sentLast24h, pemakaian24Jam };

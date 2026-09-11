@@ -63,6 +63,45 @@ router.get('/', (req, res) => {
   res.json({ campaigns: rows.map((c) => ({ ...c, stats: campaignStats(c.id) })) });
 });
 
+/** Penjelasan kode kesalahan WhatsApp dalam bahasa sehari-hari. */
+const ARTI_GALAT = {
+  131026: ['Nomor tidak terdaftar di WhatsApp', 'Nomor salah ketik, sudah tidak dipakai, atau memang belum pernah memakai WhatsApp. Bersihkan dengan tombol "Bersihkan nomor tidak aktif".'],
+  131047: ['Lewat jendela 24 jam', 'Pesan teks bebas hanya boleh dikirim dalam 24 jam sejak pesan terakhir dari penerima. Gunakan template.'],
+  131049: ['Dibatasi Meta demi kesehatan ekosistem', 'Meta membatasi jumlah pesan pemasaran ke orang tersebut hari itu. Kurangi frekuensi promosi dan beri jeda antar broadcast.'],
+  131000: ['Gangguan sementara di sisi Meta', 'Coba ulangi pesan yang gagal beberapa saat lagi.'],
+  130429: ['Terlalu cepat mengirim', 'Turunkan kecepatan kirim di layar broadcast.'],
+  132000: ['Jumlah variabel tidak cocok', 'Sinkronkan ulang template, lalu isi ulang variabelnya.'],
+  132001: ['Template tidak ditemukan', 'Nama atau bahasa template berubah. Tekan Sinkronkan di menu Template.'],
+  132015: ['Template dijeda Meta', 'Kualitas template turun karena banyak yang memblokir atau melaporkan. Perbaiki isi template.'],
+  132016: ['Template dinonaktifkan Meta', 'Template tidak bisa dipakai lagi. Buat template baru dengan isi yang lebih baik.'],
+  80007: ['Batas kirim nomor tercapai', 'Kuota harian nomor sudah habis. Tunggu 24 jam.'],
+  133010: ['Nomor pengirim belum terdaftar', 'Periksa status nomor di WhatsApp Manager.'],
+  190: ['Access Token kadaluarsa', 'Buat ulang System User Token permanen, lalu perbarui di Pengaturan.'],
+  100: ['Parameter tidak sah', 'Biasanya Phone Number ID salah, atau isi variabel kosong.'],
+};
+
+function penyebabGagal(campaignId) {
+  const rows = db.prepare(`
+    SELECT COALESCE(error_code, '-') AS kode,
+           COUNT(*) AS jumlah,
+           MAX(COALESCE(error_detail, '')) AS contoh
+    FROM outbound_messages
+    WHERE campaign_id = ? AND status = 'failed'
+    GROUP BY kode ORDER BY jumlah DESC
+  `).all(campaignId);
+
+  return rows.map((r) => {
+    const arti = ARTI_GALAT[r.kode] || null;
+    return {
+      kode: r.kode,
+      jumlah: r.jumlah,
+      judul: arti ? arti[0] : 'Kesalahan lain',
+      saran: arti ? arti[1] : (r.contoh || 'Lihat rincian per penerima di tabel bawah.'),
+      contoh: r.contoh,
+    };
+  });
+}
+
 router.get('/:id', (req, res) => {
   const id = Number(req.params.id);
   const row = db.prepare(`
@@ -70,7 +109,7 @@ router.get('/:id', (req, res) => {
     LEFT JOIN users u ON u.id = c.created_by WHERE c.id = ?
   `).get(id);
   if (!row) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
-  res.json({ campaign: { ...row, stats: campaignStats(id) } });
+  res.json({ campaign: { ...row, stats: campaignStats(id), penyebabGagal: penyebabGagal(id) } });
 });
 
 router.get('/:id/messages', (req, res) => {
