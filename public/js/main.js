@@ -156,6 +156,42 @@
     }, 30000);
   }
 
+  /* ----------------------------------------------------------------------
+     Pemasangan di HP (PWA)
+
+     Service worker didaftarkan supaya aplikasi bisa dipasang seperti aplikasi
+     biasa di layar utama HP petugas, dan tetap terbuka saat sinyal putus.
+     ---------------------------------------------------------------------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('Service worker gagal didaftarkan:', err.message);
+      });
+    });
+  }
+
+  // Tombol pasang muncul sendiri kalau browser menawarkan pemasangan.
+  let tawaranPasang = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    tawaranPasang = e;
+    const tombol = document.getElementById('tombol-pasang');
+    if (tombol) tombol.hidden = false;
+  });
+  window.addEventListener('appinstalled', () => {
+    tawaranPasang = null;
+    const tombol = document.getElementById('tombol-pasang');
+    if (tombol) tombol.hidden = true;
+    App.sukses('Aplikasi berhasil dipasang di perangkat ini.');
+  });
+  document.getElementById('tombol-pasang')?.addEventListener('click', async () => {
+    if (!tawaranPasang) return;
+    tawaranPasang.prompt();
+    await tawaranPasang.userChoice;
+    tawaranPasang = null;
+    document.getElementById('tombol-pasang').hidden = true;
+  });
+
   (async function awal() {
     try {
       api('/api/app-info').then((info) => App.pasangNamaAplikasi(info.app_name)).catch(() => {});

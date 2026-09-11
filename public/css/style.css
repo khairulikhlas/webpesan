@@ -237,12 +237,38 @@ pre.kode {
 /* ---------- Responsif ---------- */
 @media (max-width: 900px) {
   .inbox { grid-template-columns: 1fr; }
+
+  /* Di layar sempit, tampilkan salah satu saja: daftar percakapan ATAU isi
+     percakapan. Menampilkan keduanya bertumpuk membuat petugas harus
+     menggulir jauh setiap kali berpindah orang. */
+  .inbox.lihat-percakapan > .daftar-percakapan { display: none; }
+  .inbox:not(.lihat-percakapan) > .panel-percakapan { display: none; }
+  .daftar-percakapan { max-height: none; }
+  .riwayat { max-height: 58vh; }
+}
+
+.tombol-kembali-inbox { display: none; }
+@media (max-width: 900px) {
+  .tombol-kembali-inbox { display: inline-flex; margin-bottom: .6rem; }
+}
+
+/* Beri ruang aman di ponsel yang punya bilah gestur di bawah layar. */
+@supports (padding: max(0px)) {
+  .konten { padding-bottom: max(3rem, env(safe-area-inset-bottom)); }
 }
 @media (max-width: 760px) {
   .aplikasi { flex-direction: column; }
   .sidebar { width: 100%; height: auto; position: static; }
-  .sidebar nav { display: none; }
+  /* Saat menu tertutup, sidebar cukup menampilkan nama aplikasi saja, supaya
+     isi halaman tidak terdorong jauh ke bawah di layar ponsel. */
+  .sidebar nav,
+  .sidebar .kaki { display: none; }
   .sidebar.buka nav { display: block; }
+  .sidebar.buka .kaki { display: block; }
+  .sidebar .merek { padding: .8rem 1.2rem; }
+
+  /* Keterangan panjang disembunyikan di layar sempit agar tidak menutupi isi. */
+  .sembunyi-di-ponsel { display: none; }
   .tombol-menu {
     display: inline-flex; position: absolute; right: 1rem; top: .9rem;
     background: rgba(255, 255, 255, .15);

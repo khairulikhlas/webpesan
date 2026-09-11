@@ -6,7 +6,14 @@
   <title>CRM Cinta Dakwah</title>
   <meta name="description" content="CRM Cinta Dakwah - aplikasi internal untuk mengirim pesan broadcast WhatsApp lewat WhatsApp Cloud API resmi dari Meta." />
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#075e54" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CRM Dakwah" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="icon" href="/icon-192.png" />
 </head>
 <body>
 
@@ -52,6 +59,7 @@
       </nav>
       <div class="kaki">
         <div id="info-pengguna">-</div>
+        <button type="button" id="tombol-pasang" hidden>📲 Pasang di perangkat ini</button>
         <button type="button" id="tombol-keluar">Keluar</button>
       </div>
     </aside>

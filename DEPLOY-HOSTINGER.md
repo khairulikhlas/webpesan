@@ -220,6 +220,32 @@ aplikasi tetap hidup, kamu juga dapat pemberitahuan kalau webnya mati.
 
 ---
 
+## Saran Nginx: sajikan folder media langsung dari disk
+
+Saat broadcast berjalan, WhatsApp mengunduh gambar header dari server ini untuk
+setiap pesan. Kalau aplikasi Node sedang sibuk melayani ratusan pengiriman,
+unduhan itu bisa lambat dan pesan gagal dengan kode 131053
+("Downloading media from weblink failed").
+
+Agar tidak bergantung pada aplikasi, minta Nginx menyajikan folder media
+langsung dari disk. Tambahkan blok ini di atas `location /` pada berkas
+konfigurasi Nginx:
+
+```nginx
+location /media/ {
+    alias /var/www/crm-app/data/media/;
+    expires 30d;
+    add_header Cache-Control "public";
+    access_log off;
+    try_files $uri =404;
+}
+```
+
+Lalu `sudo nginx -t && sudo systemctl reload nginx`.
+
+Hindari juga me-restart aplikasi selagi broadcast sedang berjalan, karena
+gambar tidak bisa diunduh selama beberapa detik itu.
+
 ## Perawatan
 
 **Memperbarui aplikasi:** unggah ZIP versi baru, ekstrak menimpa file lama

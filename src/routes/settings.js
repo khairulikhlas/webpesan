@@ -32,6 +32,7 @@ function maskedSettings(req) {
     has_access_token: Boolean(s.access_token),
     access_token_hint: s.access_token ? `••••••${String(s.access_token).slice(-4)}` : '',
     has_app_secret: Boolean(s.app_secret),
+    has_api_key: Boolean(s.api_key),
     webhook_url: `${publicUrl}/webhook`,
     public_url: publicUrl,
   };
@@ -57,6 +58,25 @@ router.put('/', requireAdmin, (req, res) => {
   settings.setMany(payload);
   logActivity(req.user.id, 'settings.updated', Object.keys(payload).join(', '));
   res.json({ ok: true, settings: maskedSettings(req) });
+});
+
+/** Membuat kunci API untuk sistem lain milik lembaga. */
+router.post('/api-key', requireAdmin, (req, res) => {
+  const kunci = 'ccd_' + randomToken(24);
+  settings.set('api_key', kunci);
+  logActivity(req.user.id, 'settings.api_key', 'Kunci API dibuat ulang');
+  res.json({ ok: true, api_key: kunci });
+});
+
+router.delete('/api-key', requireAdmin, (req, res) => {
+  settings.set('api_key', '');
+  logActivity(req.user.id, 'settings.api_key', 'Kunci API dinonaktifkan');
+  res.json({ ok: true });
+});
+
+/** Kunci hanya boleh dilihat admin, karena siapa pun yang punya bisa menulis kontak. */
+router.get('/api-key', requireAdmin, (req, res) => {
+  res.json({ api_key: settings.get('api_key') || '' });
 });
 
 router.post('/regenerate-verify-token', requireAdmin, (req, res) => {

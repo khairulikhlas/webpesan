@@ -8,14 +8,16 @@
   window.App.views.inbox = async function inboxView(konten) {
 
     const kolomKiri = h('div', { class: 'panel daftar-percakapan' });
-    const kolomKanan = h('div', { class: 'panel' }, h('div', { class: 'pesan-kosong', text: 'Pilih percakapan di sebelah kiri.' }));
+    const kolomKanan = h('div', { class: 'panel panel-percakapan' },
+      h('div', { class: 'pesan-kosong', text: 'Pilih percakapan di sebelah kiri.' }));
+    const wadahInbox = h('div', { class: 'inbox' }, kolomKiri, kolomKanan);
 
     konten.innerHTML = '';
     konten.appendChild(h('h1', { text: 'Kotak Masuk' }));
-    konten.appendChild(h('div', { class: 'info' },
+    konten.appendChild(h('div', { class: 'info sembunyi-di-ponsel' },
       'Balasan pelanggan hanya masuk ke sini kalau ', h('strong', { text: 'webhook sudah aktif' }),
       '. Aturan WhatsApp: pesan teks bebas hanya boleh dikirim dalam 24 jam setelah pelanggan mengirim pesan terakhir.'));
-    konten.appendChild(h('div', { class: 'inbox' }, kolomKiri, kolomKanan));
+    konten.appendChild(wadahInbox);
 
     async function muatDaftar() {
       const data = await api('/api/inbox/threads');
@@ -33,7 +35,12 @@
           h('div', { class: 'cuplikan', text: t.last_body || '' }),
           h('div', { class: 'kecil' }, fmtTanggal(t.last_received_at), ' ',
             t.window_open ? h('span', { class: 'label hijau', text: '24 jam aktif' }) : h('span', { class: 'label abu', text: 'perlu template' })));
-        el.addEventListener('click', () => { aktif = t.phone; muatDaftar(); bukaPercakapan(t.phone); });
+        el.addEventListener('click', () => {
+          aktif = t.phone;
+          wadahInbox.classList.add('lihat-percakapan');
+          muatDaftar();
+          bukaPercakapan(t.phone);
+        });
         kolomKiri.appendChild(el);
       }
     }
@@ -41,6 +48,11 @@
     async function bukaPercakapan(phone) {
       const data = await api('/api/inbox/thread/' + encodeURIComponent(phone));
       kolomKanan.innerHTML = '';
+      kolomKanan.appendChild(h('button', {
+        type: 'button', class: 'sekunder kecil-btn tombol-kembali-inbox',
+        text: '‹ Daftar percakapan',
+        onclick: () => { wadahInbox.classList.remove('lihat-percakapan'); },
+      }));
       kolomKanan.appendChild(h('div', { class: 'antara' },
         h('div', {}, h('h3', { text: data.contact?.name || fmtNomor(phone) }),
           h('div', { class: 'kecil', text: fmtNomor(phone) })),

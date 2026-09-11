@@ -56,6 +56,9 @@ app.use('/api/campaigns', require('./src/routes/campaigns'));
 app.use('/api/inbox', require('./src/routes/inbox'));
 app.use('/api/settings', require('./src/routes/settings'));
 app.use('/api/media', require('./src/routes/media'));
+
+// API untuk sistem lain milik lembaga (memakai kunci API, bukan login).
+app.use('/api/v1', require('./src/routes/api-publik'));
 app.use('/api/stats', require('./src/routes/stats'));
 
 // Nama aplikasi dibutuhkan halaman login, jadi endpoint ini tidak perlu login.
