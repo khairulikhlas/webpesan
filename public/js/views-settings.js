@@ -63,6 +63,37 @@
       h('h3', { text: '2. Identitas & preferensi pengiriman' }),
       h('label', { for: 's-appname', text: 'Nama aplikasi (muncul di judul tab dan pojok kiri atas)' }),
       h('input', { id: 's-appname', type: 'text', value: s.app_name, disabled: !bolehUbah, placeholder: 'CRM Cinta Dakwah' }),
+      (() => {
+        const pratinjau = h('div', { style: 'margin:.5rem 0' });
+        const alamat = h('input', {
+          id: 's-logo', type: 'text', value: s.logo_url, disabled: !bolehUbah,
+          placeholder: 'Kosongkan kalau ingin memakai tulisan nama saja',
+        });
+        const segarkan = () => {
+          pratinjau.innerHTML = '';
+          if (!alamat.value.trim()) return;
+          pratinjau.appendChild(h('div', {
+            style: 'display:inline-block;padding:.6rem 1rem;background:var(--sidebar);border-radius:10px',
+          }, h('img', {
+            src: alamat.value.trim(), alt: 'Pratinjau logo',
+            style: 'max-height:48px;max-width:190px;display:block',
+          })));
+          pratinjau.appendChild(h('div', { class: 'kecil', text: 'Begini tampilannya di bilah samping.' }));
+        };
+        alamat.addEventListener('input', segarkan);
+        setTimeout(segarkan, 0);
+
+        return h('div', { style: 'margin-top:.8rem' },
+          h('label', { text: 'Logo lembaga' }),
+          h('div', { class: 'baris', style: 'gap:.5rem' },
+            h('div', { class: 'kolom' }, alamat),
+            bolehUbah ? h('button', {
+              type: 'button', class: 'sekunder', text: '🖼️ Unggah logo',
+              onclick: () => App.galeriMedia((url) => { alamat.value = url; segarkan(); App.sukses('Logo dipilih. Jangan lupa tekan Simpan pengaturan.'); }),
+            }) : null),
+          h('div', { class: 'kecil', text: 'Sebaiknya PNG berlatar transparan, lebar sekitar 400 piksel. Logo menggantikan tulisan nama di layar masuk dan bilah samping.' }),
+          pratinjau);
+      })(),
       h('label', { for: 's-nama', text: 'Nama bisnis / lembaga' }),
       h('input', { id: 's-nama', type: 'text', value: s.business_name, disabled: !bolehUbah }),
       h('label', { for: 's-kode', text: 'Kode negara default' }),
@@ -196,6 +227,7 @@
               app_secret: v('s-secret'),
               graph_version: v('s-versi') || 'v23.0',
               app_name: v('s-appname') || 'CRM Cinta Dakwah',
+              logo_url: v('s-logo'),
               business_name: v('s-nama'),
               default_country_code: v('s-kode') || '62',
               rate_per_minute: v('s-rate') || '60',

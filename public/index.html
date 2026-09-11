@@ -7,7 +7,7 @@
   <meta name="description" content="CRM Cinta Dakwah - aplikasi internal untuk mengirim pesan broadcast WhatsApp lewat WhatsApp Cloud API resmi dari Meta." />
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#075e54" />
+  <meta name="theme-color" content="#3a3a3c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -20,6 +20,7 @@
   <!-- Layar masuk / pendaftaran admin pertama -->
   <div id="layar-masuk" class="layar-masuk" hidden>
     <div class="kartu-masuk">
+      <img class="gambar-logo" id="masuk-gambar-logo" alt="" hidden />
       <div class="logo" id="masuk-logo">CRM Cinta Dakwah</div>
       <p class="kecil" id="masuk-subjudul">Kirim broadcast WhatsApp untuk tim kamu.</p>
       <div id="masuk-pesan"></div>
@@ -42,6 +43,7 @@
   <div id="aplikasi" class="aplikasi" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="merek">
+        <img class="gambar-logo" id="merek-gambar-logo" alt="" hidden />
         <span id="merek-nama">CRM Cinta Dakwah</span>
         <span id="merek-nomor">WhatsApp Cloud API</span>
       </div>

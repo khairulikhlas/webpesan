@@ -15,8 +15,8 @@
       item('Total', s.total),
       item('Menunggu', s.pending),
       item('Terkirim', s.terkirim, 'var(--biru)'),
-      item('Diterima', s.delivered + s.read, 'var(--hijau)'),
-      item('Dibaca', s.read, 'var(--hijau)'),
+      item('Diterima', s.delivered + s.read, 'var(--utama)'),
+      item('Dibaca', s.read, 'var(--utama)'),
       item('Gagal', s.failed, s.failed ? 'var(--merah)' : null));
   }
 

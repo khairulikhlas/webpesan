@@ -63,7 +63,10 @@ app.use('/api/stats', require('./src/routes/stats'));
 
 // Nama aplikasi dibutuhkan halaman login, jadi endpoint ini tidak perlu login.
 app.get('/api/app-info', (req, res) => {
-  res.json({ app_name: settings.get('app_name') || 'CRM Cinta Dakwah' });
+  res.json({
+    app_name: settings.get('app_name') || 'CRM Cinta Dakwah',
+    logo_url: settings.get('logo_url') || '',
+  });
 });
 
 /**

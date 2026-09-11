@@ -6,6 +6,24 @@ lama yang tersimpan ikut disegarkan.
 
 ---
 
+## 11 September 2026 — Logo lembaga & warna merek
+
+**Logo lembaga bisa dipasang sendiri**
+- Pengaturan → kolom **Logo lembaga** → tombol **Unggah logo**. Logo
+  menggantikan tulisan nama di layar masuk dan bilah samping
+- Kalau berkas logo bermasalah, tulisan nama otomatis tampil kembali
+  sehingga tampilan tidak pernah kosong
+
+**Warna mengikuti logo**
+- Bilah samping memakai abu tua dari wordmark, tombol utama memakai
+  magenta, penanda dan lencana memakai oranye, grafik memakai biru
+- Oranye dan biru logo tidak dipakai untuk teks kecil di atas putih karena
+  keterbacaannya hanya 2,6 dari minimal 4,5 menurut standar aksesibilitas.
+  Untuk teks dipakai versi yang lebih tua
+- Ikon aplikasi di HP ikut memakai tiga warna logo
+
+---
+
 ## 11 September 2026 — Bisa dipasang di HP & sambungan sistem lain
 
 **Aplikasi bisa dipasang di HP staf**

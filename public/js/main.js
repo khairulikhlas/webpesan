@@ -23,13 +23,35 @@
   };
 
   /* Nama aplikasi diambil dari server supaya bisa diganti lewat halaman Pengaturan. */
-  App.pasangNamaAplikasi = function pasangNamaAplikasi(nama) {
-    if (!nama) return;
-    document.title = nama;
-    const logo = document.getElementById('masuk-logo');
-    const merek = document.getElementById('merek-nama');
-    if (logo) logo.textContent = nama;
-    if (merek) merek.textContent = nama;
+  App.pasangNamaAplikasi = function pasangNamaAplikasi(nama, alamatLogo) {
+    if (nama) {
+      document.title = nama;
+      const logo = document.getElementById('masuk-logo');
+      const merek = document.getElementById('merek-nama');
+      if (logo) logo.textContent = nama;
+      if (merek) merek.textContent = nama;
+    }
+
+    // Kalau logo lembaga sudah diunggah, tulisan nama diganti gambarnya.
+    const pasangGambar = (idGambar, idTulisan) => {
+      const gambar = document.getElementById(idGambar);
+      const tulisan = document.getElementById(idTulisan);
+      if (!gambar) return;
+      if (alamatLogo) {
+        gambar.src = alamatLogo;
+        gambar.alt = nama || 'Logo';
+        gambar.hidden = false;
+        gambar.onerror = () => { gambar.hidden = true; if (tulisan) tulisan.hidden = false; };
+        if (tulisan) tulisan.hidden = true;
+      } else {
+        gambar.hidden = true;
+        if (tulisan) tulisan.hidden = false;
+      }
+    };
+    if (alamatLogo !== undefined) {
+      pasangGambar('masuk-gambar-logo', 'masuk-logo');
+      pasangGambar('merek-gambar-logo', 'merek-nama');
+    }
   };
 
   /* ---------------- Layar masuk ---------------- */
@@ -130,7 +152,7 @@
     try {
       const data = await api('/api/settings');
       const s = data.settings;
-      App.pasangNamaAplikasi(s.app_name);
+      App.pasangNamaAplikasi(s.app_name, s.logo_url || '');
       document.getElementById('merek-nomor').textContent = s.display_phone_number
         ? `${s.business_name} • ${s.display_phone_number}`
         : (s.business_name || 'WhatsApp Cloud API');
@@ -194,7 +216,9 @@
 
   (async function awal() {
     try {
-      api('/api/app-info').then((info) => App.pasangNamaAplikasi(info.app_name)).catch(() => {});
+      api('/api/app-info')
+        .then((info) => App.pasangNamaAplikasi(info.app_name, info.logo_url || ''))
+        .catch(() => {});
       const state = await api('/api/auth/state');
       if (state.user) { App.user = state.user; mulaiAplikasi(); }
       else siapkanLayarMasuk(state.needsSetup);

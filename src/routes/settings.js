@@ -27,6 +27,7 @@ function maskedSettings(req) {
     daily_limit: s.daily_limit,
     require_opt_in: s.require_opt_in,
     app_name: s.app_name,
+    logo_url: s.logo_url,
     business_name: s.business_name,
     // Nilai rahasia tidak pernah dikirim utuh ke browser.
     has_access_token: Boolean(s.access_token),
@@ -44,7 +45,7 @@ router.put('/', requireAdmin, (req, res) => {
   const allowed = [
     'phone_number_id', 'business_account_id', 'app_id', 'display_phone_number', 'access_token', 'app_secret',
     'verify_token', 'graph_version', 'default_country_code', 'rate_per_minute', 'daily_limit',
-    'require_opt_in', 'business_name', 'app_name',
+    'require_opt_in', 'business_name', 'app_name', 'logo_url',
   ];
   const payload = {};
   for (const key of allowed) {

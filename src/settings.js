@@ -22,6 +22,7 @@ const DEFAULTS = {
   require_opt_in: '1',              // hanya kirim ke kontak yang opt-in
   api_key: '',
   app_name: 'CRM Cinta Dakwah',
+  logo_url: '',
   business_name: 'Cinta Dakwah',
 };
 
