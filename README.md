@@ -276,6 +276,10 @@ webpesan/
 
 ---
 
+## Catatan pembaruan
+
+Daftar perubahan tiap versi ada di [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Lisensi
 
 Bebas dipakai dan dimodifikasi untuk kebutuhan internal.
